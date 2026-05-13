@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\SethParker\\\\OneDrive - QuickLaunch Analytics\\\\_Personal\\\\Kanban Project\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(node server.js)",
+      "Bash(curl -X GET http://localhost:5000/api/tasks)",
+      "Bash(curl -X POST http://localhost:5000/api/tasks -H 'Content-Type: application/json' -d '{\"title\":\"Test Task\",\"description\":\"Testing the API\",\"column\":\"Priority\"}')",
+      "Bash(curl -s http://localhost:5000/api/settings)"
+    ]
+  }
+}
