@@ -1,274 +1,144 @@
 # Kanban Task Board - Project Context Summary
 
 **Last Updated:** 2026-05-13  
-**Project Status:** v1.1 Released (active development paused, pending user feedback)
+**Project Status:** v1.2 — Azure migration complete (code), pending first deploy
 
 ## Project Overview
 
-A local Kanban-style task management board for personal use. Simple, functional prototype running on Windows work PC with React frontend and Node.js/Express backend. Data persists locally in JSON files.
+A personal Kanban-style task management board for solo use. React frontend + Node.js/Express backend. Originally ran entirely on localhost with local JSON files; now updated to use Azure Blob Storage for persistence and Azure Key Vault for credential management. Targeting Azure App Service for hosting.
 
 **Owner:** Seth Parker  
 **Current Users:** 1 (solo use)  
-**Future:** Migrate to Azure Storage for backup/sync
+**Backup:** `Kanban Project-backup-2026-05-13-*.zip` in `_Personal` folder
 
 ## Current Architecture
 
 ### Tech Stack
 - **Frontend:** React 18 + Vite (HMR enabled)
-- **Backend:** Node.js + Express (localhost:5000)
-- **Database:** JSON files (tasks.json, completed.json, archived.json, settings.json)
+- **Backend:** Node.js + Express
+- **Storage:** Azure Blob Storage (container: `seth-kanban`)
+- **Secrets:** Azure Key Vault (`kvsethkanban`) — secret name: `storage-connection-string`
+- **Auth:** DefaultAzureCredential (Managed Identity on App Service, CLI auth locally)
+- **Hosting:** Azure App Service (not yet created as of last session)
 - **Styling:** Plain CSS (supports dark/light mode)
 - **Drag-Drop:** @hello-pangea/dnd
 
 ### File Structure
 ```
 backend/
-├── server.js (Express API)
-├── data/
-│   ├── tasks.json (active tasks)
-│   ├── completed.json (permanent completed history)
-│   ├── archived.json (permanent archived history)
-│   └── settings.json (user preferences)
+├── server.js (Express API — async, uses Azure Blob Storage)
+├── package.json (includes @azure/storage-blob, @azure/identity, @azure/keyvault-secrets, dotenv)
+├── .env.example (documents required env vars)
+├── .gitignore
+└── data/ (legacy local JSON — no longer used in production)
 frontend/
 ├── src/
 │   ├── App.jsx (main + tab navigation)
-│   ├── api.js (API client)
+│   ├── api.js (uses relative /api base URL)
 │   ├── components/
-│   │   ├── Board.jsx (kanban board)
-│   │   ├── Column.jsx (droppable column)
-│   │   ├── TaskCard.jsx (draggable task)
+│   │   ├── Board.jsx
+│   │   ├── Column.jsx
+│   │   ├── TaskCard.jsx
 │   │   ├── AddTaskModal.jsx
 │   │   ├── EditTaskModal.jsx
 │   │   ├── CompletedView.jsx
-│   │   ├── ArchivedView.jsx (NEW)
-│   │   └── SettingsView.jsx (NEW)
+│   │   ├── ArchivedView.jsx
+│   │   ├── SettingsView.jsx
+│   │   └── MoveTasksModal.jsx
 │   ├── index.css (all styles)
 │   └── main.jsx
+├── vite.config.js (proxies /api to localhost:5000 for local dev)
+└── package.json
+deploy.ps1 (build frontend + zip-deploy to App Service)
 ```
 
-## Features (v1.1 - Current)
+## Features (v1.2 - Current)
 
-✅ **Board Tab**
-- Dynamic columns (configurable in Settings, min 2: one active + Completed)
+All v1.1 features plus:
+
+✅ **Azure Blob Storage backend**
+- tasks.json, completed.json, archived.json, settings.json stored as blobs
+- Connection string fetched from Key Vault at startup (never in code)
+
+✅ **Azure Key Vault integration**
+- Secret name: `storage-connection-string`
+- App authenticates via DefaultAzureCredential (Managed Identity in Azure)
+
+✅ **Production-ready Express server**
+- Serves built React frontend from `backend/public/`
+- Single URL, single deployment
+- PORT from environment variable (App Service injects this)
+
+### v1.1 Features (unchanged)
+- Dynamic columns (configurable in Settings)
 - Drag-and-drop between columns
-- Add/Edit/Delete tasks
-- Task timestamps (created, completed/archived)
-- DevOps Task # displays as `#1234 - Task Title` if filled
-- Customer name displayed on cards
-- Completed & Archive columns: show only last 7 days + date badge
+- Add/Edit/Delete tasks with confirmation
+- Task fields: Title, Description, Customer, DevOps Task #
+- Completed & Archived tabs (permanent history)
+- 7-day filter on Board display for Completed/Archive columns
+- Dark/light mode toggle
+- Board name customization
+- Column colors, rename, reorder, add/remove with task migration
 
-✅ **Task Management**
-- Title, Description, Customer, DevOps Task #
-- All fields editable in Add & Edit modals
-- Column selection in Edit modal
+## Azure Resources
 
-✅ **Completed Tab**
-- Permanent history of all completed tasks
-- Date range filters (Last 7 days, Last 30 days, All)
-- Expandable task details (description, customer, DevOps Task #, timestamps)
-- Real-time search (title + description + customer)
-- Sorted by completion date (newest first)
+| Resource | Name | Notes |
+|----------|------|-------|
+| Key Vault | `kvsethkanban` | Secret: `storage-connection-string` |
+| Storage Container | `seth-kanban` | Blob storage for all JSON data |
+| App Service | Not yet created | Target: Central US, Node 24 LTS, B1 tier |
+| Resource Group | TBD | Existing RG, Central US region |
 
-✅ **Archived Tab**
-- Permanent history of all archived tasks
-- Same filtering, search, and display as Completed tab
-- Separate column from Completed for organizational clarity
+## Azure Setup Remaining (as of last session)
 
-✅ **Settings Tab**
-- **Dark Mode**: Toggle dark/light theme (persists to settings.json)
-- **Board Name**: Customize "Kanban Task Board" title
-- **Column Management**:
-  - View all columns with their colors
-  - Add new columns (auto-assigns unused color from 15-color palette)
-  - Remove columns (Completed column cannot be removed, mandatory)
-  - Rename columns (including Completed column)
-  - All colors customizable via color picker
-  - Max ~15 columns (palette limit)
-- **Settings persist** to backend
+1. **Create App Service** (Central US, Node 24 LTS, B1, Linux)
+2. **Enable System-assigned Managed Identity** on App Service
+3. **Grant Key Vault access**: Key Vault → Access policies → Get + List secrets → App Service identity
+4. **Set App Settings**: `AZURE_KEYVAULT_URL`, `AZURE_STORAGE_CONTAINER_NAME`, `NODE_ENV`
+5. **Set up GitHub repo + continuous deployment** via Azure Deployment Center
+6. **First deploy** — verify app loads and data persists to blob storage
+7. **Custom domain** (optional, discussed — Azure App Service Domains or external registrar)
 
-✅ **Dark Mode**
-- Applied globally to all UI (light mode also available)
-- Default: dark mode enabled
-- Toggle in Settings tab
+## Local Development
 
-## Key Implementation Details
+For local dev after the Azure migration:
+1. Run `az login`
+2. Create `backend/.env` (git-ignored) with:
+   ```
+   AZURE_KEYVAULT_URL=https://kvsethkanban.vault.azure.net/
+   AZURE_STORAGE_CONTAINER_NAME=seth-kanban
+   ```
+3. `cd backend && npm start` (port 5000)
+4. `cd frontend && npm run dev` (port 3000, proxies /api to 5000)
 
-### 7-Day Filter Logic (Board Tab)
-- **Completed** and **Archive** columns on Board tab only display tasks completed/archived in last 7 days
-- Historical data remains in completed.json and archived.json (accessible via Completed/Archived tabs)
-- Completed & Archive cards show date badge (e.g., "May 13")
-- Tasks sorted by completion/archive date (newest first)
-- Prevents clutter on board while preserving full history
+## Data Model (unchanged from v1.1)
 
-### Column Management
-- Columns are user-customizable (add/remove/rename/recolor)
-- Default columns: Priority, Backlog, Archive, Completed
-- "Completed" column is mandatory (required for the Completed tab to function)
-- Column order is preserved as configured in settings.json
-- Each column has a dedicated color (supports 15 max via color palette)
+All four JSON files stored as blobs in `seth-kanban` container:
+- `tasks.json` — active tasks `{ tasks: [...], columns: [...] }`
+- `completed.json` — permanent completed history (array)
+- `archived.json` — permanent archived history (array)
+- `settings.json` — user preferences and column config
 
-## Data Model (v1.1)
+## API Endpoints (unchanged from v1.1)
 
-### tasks.json (Active Tasks)
-```json
-{
-  "tasks": [
-    {
-      "id": "uuid",
-      "title": "Task name",
-      "description": "Optional details",
-      "customer": "Customer name",
-      "devopsTaskNum": null,
-      "column": "Priority",
-      "createdAt": "2026-05-13T12:00:00.000Z",
-      "completedAt": null,
-      "archivedAt": null
-    }
-  ],
-  "columns": ["Priority", "Backlog", "Archive", "Completed"]
-}
-```
+- `GET/PUT /api/settings`
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `PUT /api/tasks/:id`
+- `DELETE /api/tasks/:id`
+- `GET /api/completed?startDate=&endDate=`
+- `GET /api/archived?startDate=&endDate=`
 
-**Note:** `completedAt` is auto-set when task moves to Completed column. `archivedAt` is auto-set when task moves to Archive column.
+## Known Issues / Notes
 
-### completed.json (Completed Tasks History)
-Array of all tasks ever moved to Completed column. Same schema as tasks.json, but `completedAt` is always populated.
-
-### archived.json (Archived Tasks History)
-Array of all tasks ever moved to Archive column. Same schema as tasks.json, but `archivedAt` is always populated.
-
-### settings.json (User Preferences & Configuration)
-```json
-{
-  "boardName": "Kanban Task Board",
-  "darkMode": true,
-  "columns": ["Priority", "Backlog", "Archive", "Completed"],
-  "columnColors": {
-    "Priority": "#ef4444",
-    "Backlog": "#3b82f6",
-    "Archive": "#f59e0b",
-    "Completed": "#22c55e"
-  },
-  "columnDisplayNames": {
-    "Completed": "Completed"
-  }
-}
-```
-
-**Key fields:**
-- `boardName`: Displayed in app header, customizable via Settings
-- `darkMode`: Boolean, toggle in Settings tab
-- `columns`: Array of configured column names (ordered, user can add/remove)
-- `columnColors`: Map of column name → hex color
-- `columnDisplayNames`: Map for column aliases (e.g., show "Done" but use "Completed" internally)
-
-## API Endpoints
-
-### Tasks (Active)
-- `GET /api/tasks` → `{ tasks: [...], columns: [...] }`
-- `POST /api/tasks` → create task (auto-sets `createdAt`, `completedAt`/`archivedAt` if column is Completed/Archive)
-  - Body: `{ title, description?, customer?, devopsTaskNum?, column? }`
-- `PUT /api/tasks/:id` → update task (auto-manages timestamps based on column changes)
-  - Body: any task fields to update
-- `DELETE /api/tasks/:id` → delete task from active list
-
-### Completed Tasks (History)
-- `GET /api/completed?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` → filter by completion date
-  - Returns tasks sorted by `completedAt` (newest first)
-
-### Archived Tasks (History)
-- `GET /api/archived?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` → filter by archive date
-  - Returns tasks sorted by `archivedAt` (newest first)
-
-### Settings
-- `GET /api/settings` → return full settings object
-- `PUT /api/settings` → update settings
-  - Body: any settings fields to update (partial update OK)
-
-## Application Tabs
-
-The app has 4 main views (tabs in header):
-
-1. **Board** - Main Kanban interface with drag-drop columns
-2. **Completed** - History of all completed tasks (permanent record, not deleted)
-3. **Archived** - History of all archived tasks (permanent record, not deleted)
-4. **Settings** - User preferences, board config, column management
-
-## Known Issues / Tech Debt
-
+- `deploy.ps1` zips `backend/*` including `node_modules` — works but is large. CI/CD via GitHub Actions is cleaner (installs dependencies server-side).
+- VS Code was hanging during GitHub publish — restart resolved it (last session ended here).
 - @hello-pangea/dnd warns about nested scroll containers (cosmetic, dev-only)
-- JSON file I/O is synchronous (OK for small data, consider async later)
-- No conflict resolution if multiple tabs/devices edit same task (solo use for now)
 
 ## Future Enhancements
 
-1. **Azure Storage migration**
-   - Backup tasks.json, completed.json, archived.json to Azure Blob Storage
-   - Settings to cloud too
-
+1. **Custom domain** — buy via Azure App Service Domains or external registrar, free SSL from Azure
 2. **Recurring tasks**
-   - Template tasks that recreate on schedule
-
 3. **Subtasks**
-   - Hierarchical task structure
-
 4. **Reports/Analytics**
-   - Velocity charts, completion trends
-
 5. **Mobile app**
-   - React Native or PWA version
-
-## Running the App
-
-```bash
-# Terminal 1: Backend
-cd backend
-npm install
-npm start         # or: node server.js
-
-# Terminal 2: Frontend
-cd frontend
-npm install
-npm run dev
-```
-
-**Access:** http://localhost:3001 (or next available port if 3001 is in use)
-
-### Available npm Scripts
-
-**Backend:**
-- `npm start` — Start Express server (production)
-
-**Frontend:**
-- `npm run dev` — Start Vite dev server with HMR
-- `npm run build` — Build for production
-- `npm run preview` — Preview production build locally
-
-## Notes for Claude
-
-### Code Style & Preferences
-- **User preference**: Clean, functional UI over fancy animations
-- **Code quality > complexity** — no over-engineering or premature abstractions
-- **Follow existing patterns** — maintain consistency with established component structure
-- **Keep components focused** — single responsibility principle
-- **All timestamps in local timezone** — handled via JavaScript Date methods
-
-### Architecture Notes
-- Single-user app — no multi-user conflict resolution or auth needed
-- Direct file I/O OK for now (JSON in /backend/data/) — will migrate to Azure later
-- Component state is ephemeral — settings and historical data come from backend
-- Hot reload enabled on frontend via Vite (great for development)
-- Settings are user-configurable and persist across sessions
-
-### Future Work Priorities
-1. **Azure Storage integration** — migrate tasks.json, completed.json, archived.json, settings.json to Azure Blob/Table Storage
-2. **Additional task fields** — user may want to add labels, due dates, priorities, attachments
-3. **Bulk operations** — move multiple tasks, archive old items, export data
-4. **Search improvements** — filters, sort by date/customer, saved searches
-
-### Testing the App
-- Always test both dark and light modes
-- Verify timestamps display in local timezone (important!)
-- Check that 7-day filter works correctly (oldest items drop off board after 7 days)
-- Confirm settings persist after page refresh
-- Verify Completed/Archived tabs show full history (not just last 7 days)
