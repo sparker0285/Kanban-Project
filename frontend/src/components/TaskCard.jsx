@@ -37,7 +37,20 @@ export default function TaskCard({ task, index, onDelete, onEdit, showCompletedD
           {...provided.dragHandleProps}
         >
           <div className="task-card-body">
-            <p className="task-title">{displayTitle}</p>
+            {task.devopsItemUrl ? (
+              <a
+                href={task.devopsItemUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="task-title task-title-link"
+                onClick={e => e.stopPropagation()}
+                title="Open in Azure DevOps"
+              >
+                {displayTitle} ↗
+              </a>
+            ) : (
+              <p className="task-title">{displayTitle}</p>
+            )}
             {task.customer && <p className="task-customer">{task.customer}</p>}
             {task.description && <p className="task-desc">{task.description}</p>}
             {showCompletedDate && <p className="task-completed-date">{getCompletedDateDisplay()}</p>}

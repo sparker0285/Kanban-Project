@@ -1,144 +1,244 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-13  
-**Project Status:** v1.2 — Azure migration complete (code), pending first deploy
+**Last Updated:** 2026-05-14  
+**Project Status:** v1.2 — Live on Azure with custom domain
 
 ## Project Overview
 
-A personal Kanban-style task management board for solo use. React frontend + Node.js/Express backend. Originally ran entirely on localhost with local JSON files; now updated to use Azure Blob Storage for persistence and Azure Key Vault for credential management. Targeting Azure App Service for hosting.
+A personal Kanban-style task management board running on Azure. React frontend + Node.js/Express backend with Azure Blob Storage persistence. Deployed to production with custom domain (kanban.sethsapps.com).
 
 **Owner:** Seth Parker  
 **Current Users:** 1 (solo use)  
+**Domain:** kanban.sethsapps.com  
 **Backup:** `Kanban Project-backup-2026-05-13-*.zip` in `_Personal` folder
 
 ## Current Architecture
 
 ### Tech Stack
 - **Frontend:** React 18 + Vite (HMR enabled)
-- **Backend:** Node.js + Express
+- **Backend:** Node.js + Express (Azure App Service)
 - **Storage:** Azure Blob Storage (container: `seth-kanban`)
-- **Secrets:** Azure Key Vault (`kvsethkanban`) — secret name: `storage-connection-string`
-- **Auth:** DefaultAzureCredential (Managed Identity on App Service, CLI auth locally)
-- **Hosting:** Azure App Service (not yet created as of last session)
+- **Auth:** Managed Identity (no credentials in code)
+- **Hosting:** Azure App Service (B1 tier, Central US)
+- **Domain:** Custom domain via Namecheap DNS
 - **Styling:** Plain CSS (supports dark/light mode)
 - **Drag-Drop:** @hello-pangea/dnd
 
 ### File Structure
 ```
 backend/
-├── server.js (Express API — async, uses Azure Blob Storage)
-├── package.json (includes @azure/storage-blob, @azure/identity, @azure/keyvault-secrets, dotenv)
+├── server.js (Express API — async, uses Azure Blob Storage with Managed Identity)
+├── package.json (includes @azure/storage-blob, @azure/identity, dotenv)
 ├── .env.example (documents required env vars)
 ├── .gitignore
-└── data/ (legacy local JSON — no longer used in production)
+└── data/ (legacy local JSON — no longer used)
 frontend/
 ├── src/
-│   ├── App.jsx (main + tab navigation)
+│   ├── App.jsx (main + tab navigation, dynamic page title)
 │   ├── api.js (uses relative /api base URL)
 │   ├── components/
-│   │   ├── Board.jsx
+│   │   ├── Board.jsx (immediate UI updates on drag-drop)
 │   │   ├── Column.jsx
 │   │   ├── TaskCard.jsx
-│   │   ├── AddTaskModal.jsx
-│   │   ├── EditTaskModal.jsx
+│   │   ├── AddTaskModal.jsx (Project/Customer field)
+│   │   ├── EditTaskModal.jsx (Project/Customer field)
 │   │   ├── CompletedView.jsx
 │   │   ├── ArchivedView.jsx
-│   │   ├── SettingsView.jsx
+│   │   ├── SettingsView.jsx (Archive column protected)
 │   │   └── MoveTasksModal.jsx
 │   ├── index.css (all styles)
+│   ├── index.html (favicon.ico, page title)
 │   └── main.jsx
 ├── vite.config.js (proxies /api to localhost:5000 for local dev)
 └── package.json
 deploy.ps1 (build frontend + zip-deploy to App Service)
+.github/workflows/azure-deploy.yml (GitHub Actions CI/CD)
 ```
 
 ## Features (v1.2 - Current)
 
-All v1.1 features plus:
+✅ **Live on Azure**
+- Deployed to Azure App Service (B1, Central US)
+- Custom domain: kanban.sethsapps.com
+- HTTPS enabled (free managed certificate)
+- GitHub Actions CI/CD pipeline
 
-✅ **Azure Blob Storage backend**
-- tasks.json, completed.json, archived.json, settings.json stored as blobs
-- Connection string fetched from Key Vault at startup (never in code)
+✅ **Managed Identity Authentication**
+- No secrets in code or environment
+- App Service → Azure Storage via Managed Identity
+- Storage Blob Data Contributor role
 
-✅ **Azure Key Vault integration**
-- Secret name: `storage-connection-string`
-- App authenticates via DefaultAzureCredential (Managed Identity in Azure)
-
-✅ **Production-ready Express server**
-- Serves built React frontend from `backend/public/`
-- Single URL, single deployment
-- PORT from environment variable (App Service injects this)
-
-### v1.1 Features (unchanged)
+✅ **Board Tab**
 - Dynamic columns (configurable in Settings)
-- Drag-and-drop between columns
-- Add/Edit/Delete tasks with confirmation
-- Task fields: Title, Description, Customer, DevOps Task #
-- Completed & Archived tabs (permanent history)
-- 7-day filter on Board display for Completed/Archive columns
-- Dark/light mode toggle
-- Board name customization
-- Column colors, rename, reorder, add/remove with task migration
+- Drag-and-drop between columns (immediate UI update with completedAt/archivedAt)
+- Add/Edit/Delete tasks
+- Task fields: Title, Description, Project/Customer, DevOps Task #
+- Completed & Archive columns: 7-day filter + date badge
+- Archive column protected from deletion
+
+✅ **Task Management**
+- All fields editable in Add & Edit modals
+- Column selection in Edit modal
+- Timestamps: createdAt, completedAt, archivedAt
+
+✅ **Completed Tab**
+- Permanent history (all completed tasks)
+- Date range filters (Last 7 days, Last 30 days, All)
+- Expandable task details
+- Real-time search
+
+✅ **Archived Tab**
+- Permanent history (all archived tasks)
+- Same filtering/search as Completed tab
+- Archive column protected from deletion
+
+✅ **Settings Tab**
+- Dark/Light mode toggle
+- Board name customization (reflected in browser tab title)
+- Column management: add, remove (with task migration), rename, reorder, color
+- Completed and Archive columns cannot be deleted
+
+✅ **UI/UX**
+- Dark mode CSS variables (all text readable)
+- Browser tab title matches board name (dynamic)
+- Favicon customizable (favicon.ico)
+- Responsive layout
+- Clean, functional design
 
 ## Azure Resources
 
-| Resource | Name | Notes |
-|----------|------|-------|
-| Key Vault | `kvsethkanban` | Secret: `storage-connection-string` |
-| Storage Container | `seth-kanban` | Blob storage for all JSON data |
-| App Service | Not yet created | Target: Central US, Node 24 LTS, B1 tier |
-| Resource Group | TBD | Existing RG, Central US region |
+| Resource | Name | Details |
+|----------|------|---------|
+| App Service | seth-kanban-app-a9a7a8gzahc0dzbt | B1 tier, Node 24 LTS, Central US |
+| Storage Account | sethappstorage | Blob storage, seth-kanban container |
+| Custom Domain | kanban.sethsapps.com | Via Namecheap DNS (CNAME + TXT) |
+| App Service Plan | kanban-plan | B1 Linux, Central US |
 
-## Azure Setup Remaining (as of last session)
+## Data Model (v1.2)
 
-1. **Create App Service** (Central US, Node 24 LTS, B1, Linux)
-2. **Enable System-assigned Managed Identity** on App Service
-3. **Grant Key Vault access**: Key Vault → Access policies → Get + List secrets → App Service identity
-4. **Set App Settings**: `AZURE_KEYVAULT_URL`, `AZURE_STORAGE_CONTAINER_NAME`, `NODE_ENV`
-5. **Set up GitHub repo + continuous deployment** via Azure Deployment Center
-6. **First deploy** — verify app loads and data persists to blob storage
-7. **Custom domain** (optional, discussed — Azure App Service Domains or external registrar)
+### tasks.json (Active Tasks)
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "title": "Task name",
+      "description": "Optional details",
+      "customer": "Project/Customer name",
+      "devopsTaskNum": null,
+      "column": "Priority",
+      "createdAt": "2026-05-14T...",
+      "completedAt": null,
+      "archivedAt": null
+    }
+  ]
+}
+```
 
-## Local Development
+### completed.json & archived.json
+Arrays of historical tasks with timestamps populated.
 
-For local dev after the Azure migration:
-1. Run `az login`
-2. Create `backend/.env` (git-ignored) with:
-   ```
-   AZURE_KEYVAULT_URL=https://kvsethkanban.vault.azure.net/
-   AZURE_STORAGE_CONTAINER_NAME=seth-kanban
-   ```
-3. `cd backend && npm start` (port 5000)
-4. `cd frontend && npm run dev` (port 3000, proxies /api to 5000)
+### settings.json
+```json
+{
+  "boardName": "Seth's Task Board",
+  "darkMode": true,
+  "columns": ["Priority", "Backlog", "Archive", "Completed"],
+  "columnColors": { ... },
+  "columnDisplayNames": { ... }
+}
+```
 
-## Data Model (unchanged from v1.1)
-
-All four JSON files stored as blobs in `seth-kanban` container:
-- `tasks.json` — active tasks `{ tasks: [...], columns: [...] }`
-- `completed.json` — permanent completed history (array)
-- `archived.json` — permanent archived history (array)
-- `settings.json` — user preferences and column config
-
-## API Endpoints (unchanged from v1.1)
+## API Endpoints
 
 - `GET/PUT /api/settings`
-- `GET /api/tasks`
-- `POST /api/tasks`
-- `PUT /api/tasks/:id`
+- `GET /api/tasks` → `[{task}]`
+- `POST /api/tasks` → create (auto-sets createdAt, completedAt if Completed)
+- `PUT /api/tasks/:id` → update (auto-manages timestamps on column change)
 - `DELETE /api/tasks/:id`
-- `GET /api/completed?startDate=&endDate=`
-- `GET /api/archived?startDate=&endDate=`
+- `GET /api/completed?startDate=X&endDate=Y` → sorted by completedAt
+- `GET /api/archived?startDate=X&endDate=Y` → sorted by archivedAt
 
-## Known Issues / Notes
+## Deployment Pipeline
 
-- `deploy.ps1` zips `backend/*` including `node_modules` — works but is large. CI/CD via GitHub Actions is cleaner (installs dependencies server-side).
-- VS Code was hanging during GitHub publish — restart resolved it (last session ended here).
-- @hello-pangea/dnd warns about nested scroll containers (cosmetic, dev-only)
+**GitHub Actions** (`azure-deploy.yml`):
+1. Build React frontend (`npm run build`)
+2. Copy build output to `backend/public/`
+3. Install backend dependencies
+4. Zip and deploy to Azure App Service
 
-## Future Enhancements
+**Trigger:** Any push to `main` branch
 
-1. **Custom domain** — buy via Azure App Service Domains or external registrar, free SSL from Azure
-2. **Recurring tasks**
-3. **Subtasks**
-4. **Reports/Analytics**
-5. **Mobile app**
+## Known Issues & Notes
+
+- @hello-pangea/dnd warns about nested scroll (cosmetic, dev-only)
+- Drag-drop now sets completedAt/archivedAt on frontend for instant UI (no tab-switching needed)
+- JSON file I/O is synchronous on backend (acceptable for small data)
+- No multi-user conflict resolution (solo use)
+
+## Future Enhancement Ideas
+
+1. **Azure DevOps Integration** (planned, not started)
+   - Fetch work items assigned to user from Azure DevOps
+   - One-way or two-way sync
+   - Requires: azure-devops-node-api, PAT auth, REST API integration
+
+2. **Recurring tasks** — templates that auto-recreate
+3. **Subtasks** — hierarchical task structure
+4. **Reports/Analytics** — velocity, completion trends
+5. **Mobile app** — React Native or PWA
+6. **Additional subdomains** — bggapp.sethsapps.com, etc.
+7. **Search improvements** — filters, sort options, saved searches
+
+## Running the App
+
+### Production
+- **Access:** https://kanban.sethsapps.com
+- **Hosting:** Azure App Service B1 (always on, auto-scaled)
+- **Deployment:** GitHub Actions CI/CD
+
+### Local Development
+```bash
+# Terminal 1: Backend
+cd backend
+npm install
+npm start         # Listens on port 8080 (or $PORT env var)
+
+# Terminal 2: Frontend  
+cd frontend
+npm install
+npm run dev       # Listens on port 3000, proxies /api to localhost:5000
+```
+
+## Notes for Claude
+
+### Code Style
+- Clean, functional UI over fancy animations
+- Code quality > complexity
+- Follow existing patterns
+- Single responsibility components
+- Timestamps in local timezone
+
+### Architecture
+- Solo-user app (no auth/conflict resolution needed)
+- Managed Identity for Azure auth (best practice)
+- Subdomain strategy for multi-app future (kanban.*, bggapp.*, etc.)
+- Modular components, ephemeral frontend state
+
+### Testing
+- Always test dark/light modes
+- Verify timestamps display correctly
+- Check 7-day filter works (oldest items drop off)
+- Confirm settings persist across refresh
+- Test drag-drop immediate UI update
+
+## Deployment Checklist
+
+- ✅ App Service created (B1, Central US)
+- ✅ Managed Identity enabled + granted Storage Blob Data Contributor
+- ✅ GitHub Actions CI/CD pipeline working
+- ✅ Custom domain configured (kanban.sethsapps.com)
+- ✅ HTTPS enabled (free managed certificate)
+- ✅ Tasks persist to Azure Blob Storage
+- ✅ Settings persist across sessions
+- ✅ Drag-drop works with instant UI update

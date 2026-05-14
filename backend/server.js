@@ -7,9 +7,11 @@ console.log('AZURE_STORAGE_CONTAINER_NAME:', process.env.AZURE_STORAGE_CONTAINER
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { SecretClient } = require('@azure/keyvault-secrets');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +19,8 @@ const STORAGE_ACCOUNT_NAME = process.env.AZURE_STORAGE_ACCOUNT_NAME || 'sethapps
 const CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'seth-kanban';
 
 let containerClient;
+let devopsUrl;
+let devopsPat;
 
 const DEFAULT_SETTINGS = {
   boardName: 'Kanban Task Board',
@@ -31,7 +35,29 @@ const DEFAULT_SETTINGS = {
   columnDisplayNames: {
     Completed: 'Completed',
   },
+  devopsProjects: [],
 };
+
+async function initDevopsSecrets(credential) {
+  const vaultUrl = process.env.AZURE_KEYVAULT_URL;
+  if (!vaultUrl) {
+    console.log('WARNING: AZURE_KEYVAULT_URL not set, DevOps integration disabled');
+    return;
+  }
+
+  try {
+    const secretClient = new SecretClient(vaultUrl, credential);
+    const [urlSecret, patSecret] = await Promise.all([
+      secretClient.getSecret('devops-url'),
+      secretClient.getSecret('devops-token-qla'),
+    ]);
+    devopsUrl = urlSecret.value.replace(/\/$/, '');
+    devopsPat = patSecret.value;
+    console.log('DevOps secrets loaded from Key Vault');
+  } catch (err) {
+    console.log(`WARNING: Failed to load DevOps secrets: ${err.message}`);
+  }
+}
 
 async function initStorage() {
   console.log(`Initializing storage with Managed Identity...`);
@@ -48,6 +74,8 @@ async function initStorage() {
 
     containerClient = blobService.getContainerClient(CONTAINER_NAME);
     console.log(`Connected to storage container: ${CONTAINER_NAME}`);
+
+    await initDevopsSecrets(credential);
   } catch (err) {
     console.log(`ERROR during initStorage: ${err.message}`);
     throw err;
@@ -107,6 +135,43 @@ async function readArchived() {
 
 async function writeArchived(tasks) {
   return writeBlob('archived.json', tasks);
+}
+
+function httpsRequest(method, url, body = null, auth = null) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Kanban-App',
+      },
+    };
+
+    if (auth) {
+      options.headers.Authorization = auth;
+    }
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+        } else {
+          resolve(JSON.parse(data || '{}'));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
+    req.end();
+  });
 }
 
 app.use(cors({ origin: /^http:\/\/localhost/ }));
@@ -280,6 +345,101 @@ app.delete('/api/tasks/:id', async (req, res) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// GET /api/devops/tasks
+app.get('/api/devops/tasks', async (req, res) => {
+  try {
+    if (!devopsUrl || !devopsPat) {
+      return res.status(503).json({ error: 'DevOps integration not configured' });
+    }
+
+    const settings = await readSettings();
+    const projects = settings.devopsProjects || [];
+    if (!projects.length) {
+      return res.json([]);
+    }
+
+    const tasks = await readTasks();
+    const importedIds = new Set(tasks.filter(t => t.devopsTaskNum).map(t => t.devopsTaskNum));
+
+    const allItems = [];
+    const auth = 'Basic ' + Buffer.from(`:${devopsPat}`).toString('base64');
+
+    for (const project of projects) {
+      try {
+        const wiqlUrl = `${devopsUrl}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.1`;
+        const wiqlBody = {
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] IN ('Task','Bug') AND [System.AssignedTo] = 'sparker@quicklaunchanalytics.com' AND [System.State] NOT IN ('Closed','Done','Removed')`,
+        };
+
+        const wiqlResult = await httpsRequest('POST', wiqlUrl, wiqlBody, auth);
+        const workItemIds = wiqlResult.workItems?.map(wi => wi.id) || [];
+
+        if (!workItemIds.length) continue;
+
+        const batchUrl = `${devopsUrl}/_apis/wit/workitems?ids=${workItemIds.join(',')}&fields=System.Id,System.Title,System.State,System.WorkItemType,System.AssignedTo,System.Description,System.TeamProject&api-version=7.1`;
+        const batchResult = await httpsRequest('GET', batchUrl, null, auth);
+
+        const items = (batchResult.value || [])
+          .filter(wi => !importedIds.has(wi.id))
+          .map(wi => ({
+            id: wi.id,
+            title: wi.fields['System.Title'],
+            state: wi.fields['System.State'],
+            type: wi.fields['System.WorkItemType'],
+            assignedTo: wi.fields['System.AssignedTo'],
+            description: (wi.fields['System.Description'] || '').replace(/<[^>]*>/g, ''),
+            project: wi.fields['System.TeamProject'],
+            devopsUrl: `${devopsUrl}/${encodeURIComponent(project)}/_workitems/edit/${wi.id}`,
+          }));
+
+        allItems.push(...items);
+      } catch (err) {
+        console.error(`Error fetching items for project ${project}:`, err.message);
+      }
+    }
+
+    res.json(allItems);
+  } catch (err) {
+    console.error('Error in GET /api/devops/tasks:', err);
+    res.status(500).json({ error: 'Failed to fetch DevOps tasks' });
+  }
+});
+
+// POST /api/devops/import
+app.post('/api/devops/import', async (req, res) => {
+  try {
+    const { devopsId, title, description, project, column } = req.body;
+
+    if (!devopsId || !title || !column) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const settings = await readSettings();
+    const completedCol = settings.columnDisplayNames?.Completed || 'Completed';
+
+    const task = {
+      id: uuidv4(),
+      title: title.trim(),
+      description: description ? description.trim().replace(/<[^>]*>/g, '') : '',
+      customer: '',
+      devopsTaskNum: parseInt(devopsId, 10),
+      devopsItemUrl: req.body.devopsUrl || '',
+      column: column || 'Backlog',
+      createdAt: new Date().toISOString(),
+      completedAt: column === completedCol ? new Date().toISOString() : null,
+      archivedAt: column === 'Archive' ? new Date().toISOString() : null,
+    };
+
+    const tasks = await readTasks();
+    tasks.push(task);
+    await writeTasks(tasks);
+    res.status(201).json(task);
+  } catch (err) {
+    console.error('Error in POST /api/devops/import:', err);
+    res.status(500).json({ error: 'Failed to import DevOps task' });
   }
 });
 

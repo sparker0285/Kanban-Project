@@ -16,6 +16,7 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [moveModal, setMoveModal] = useState(null);
+  const [newDevOpsProject, setNewDevOpsProject] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -239,6 +240,51 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
     }
   };
 
+  const handleAddDevOpsProject = async () => {
+    if (!newDevOpsProject.trim()) {
+      setError('Project name cannot be empty');
+      return;
+    }
+
+    const projects = settings.devopsProjects || [];
+    if (projects.includes(newDevOpsProject.trim())) {
+      setError('Project already added');
+      return;
+    }
+
+    try {
+      const newSettings = {
+        ...settings,
+        devopsProjects: [...projects, newDevOpsProject.trim()],
+      };
+      await updateSettings(newSettings);
+      setSettings(newSettings);
+      onSettingsUpdate(newSettings);
+      setNewDevOpsProject('');
+      setError('');
+      setSuccess('Project added!');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError('Failed to add project');
+    }
+  };
+
+  const handleRemoveDevOpsProject = async (project) => {
+    try {
+      const newSettings = {
+        ...settings,
+        devopsProjects: (settings.devopsProjects || []).filter(p => p !== project),
+      };
+      await updateSettings(newSettings);
+      setSettings(newSettings);
+      onSettingsUpdate(newSettings);
+      setSuccess('Project removed!');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError('Failed to remove project');
+    }
+  };
+
   if (!settings) {
     return <div className="settings-view"><p>Loading settings...</p></div>;
   }
@@ -281,6 +327,66 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
           <button onClick={handleBoardNameChange} className="btn-primary">
             Update
           </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>DevOps Integration</h3>
+        <div className="setting-item">
+          <label>
+            Azure DevOps Projects:
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+              Add project names to fetch tasks and bugs from Azure DevOps
+            </p>
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              value={newDevOpsProject}
+              onChange={e => setNewDevOpsProject(e.target.value)}
+              placeholder="e.g., MyProject"
+              onKeyPress={e => e.key === 'Enter' && handleAddDevOpsProject()}
+              style={{ flex: 1 }}
+            />
+            <button onClick={handleAddDevOpsProject} className="btn-primary">
+              + Add Project
+            </button>
+          </div>
+          {(settings.devopsProjects || []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {settings.devopsProjects.map(project => (
+                <div
+                  key={project}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: 'var(--input-bg)',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {project}
+                  <button
+                    onClick={() => handleRemoveDevOpsProject(project)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      padding: '0',
+                      fontSize: '1rem',
+                      lineHeight: '1',
+                    }}
+                    title="Remove project"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

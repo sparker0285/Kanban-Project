@@ -1091,3 +1091,233 @@ body {
 .app.dark-mode .task-desc-preview {
   color: #888;
 }
+
+/* DevOps Staging View */
+.devops-staging-view {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.devops-staging-view h2 {
+  margin: 0 0 20px 0;
+  font-size: 22px;
+}
+
+.devops-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.devops-item {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.item-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.item-header:hover {
+  background: #f9f9f9;
+}
+
+.item-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: fit-content;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-type {
+  background: #8b5cf6;
+}
+
+.badge-state {
+  background: #3b82f6;
+}
+
+.item-header-content {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.item-title-link {
+  display: block;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+  color: #2563eb;
+  font-size: 14px;
+  text-decoration: none;
+  word-break: break-word;
+  transition: color 0.2s ease;
+}
+
+.item-title-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.item-desc-preview {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.item-meta {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.item-meta span {
+  margin-right: 4px;
+}
+
+.item-details {
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-top: 1px solid #e5e5e5;
+}
+
+.item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.item-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.item-actions .btn-primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.item-actions .btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.item-actions .btn-secondary {
+  background: white;
+  color: #666;
+  border-color: #ccc;
+}
+
+.item-actions .btn-secondary:hover:not(:disabled) {
+  background: #f9f9f9;
+  border-color: #999;
+  color: #333;
+}
+
+.item-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.task-title-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.task-title-link:hover {
+  color: #2563eb;
+}
+
+/* Dark mode for DevOps */
+.dark-mode .devops-staging-view,
+.app.dark-mode .devops-staging-view {
+  background: #1e1e1e;
+}
+
+.dark-mode .devops-staging-view h2,
+.app.dark-mode .devops-staging-view h2 {
+  color: #ffffff;
+}
+
+.dark-mode .devops-item,
+.app.dark-mode .devops-item {
+  background: #2a2a2a;
+  border-color: #3a3a3a;
+}
+
+.dark-mode .item-header:hover,
+.app.dark-mode .item-header:hover {
+  background: #323232;
+}
+
+.dark-mode .item-title-link,
+.app.dark-mode .item-title-link {
+  color: #60a5fa;
+}
+
+.dark-mode .item-title-link:hover,
+.app.dark-mode .item-title-link:hover {
+  color: #93c5fd;
+}
+
+.dark-mode .item-desc-preview,
+.app.dark-mode .item-desc-preview {
+  color: #888;
+}
+
+.dark-mode .item-meta,
+.app.dark-mode .item-meta {
+  color: #aaa;
+}
+
+.dark-mode .item-details,
+.app.dark-mode .item-details {
+  background: #252525;
+  border-color: #3a3a3a;
+}
+
+.dark-mode .item-actions button,
+.app.dark-mode .item-actions button {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border-color: #4a4a4a;
+}
+
+.dark-mode .item-actions .btn-secondary:hover:not(:disabled),
+.app.dark-mode .item-actions .btn-secondary:hover:not(:disabled) {
+  background: #454545;
+  border-color: #555;
+  color: #ffffff;
+}

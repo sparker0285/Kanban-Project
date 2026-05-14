@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Board from './components/Board';
 import CompletedView from './components/CompletedView';
 import ArchivedView from './components/ArchivedView';
+import DevOpsStagingView from './components/DevOpsStagingView';
 import SettingsView from './components/SettingsView';
 import { getSettings } from './api';
 import './index.css';
@@ -81,6 +82,12 @@ export default function App() {
             Archived
           </button>
           <button
+            className={`nav-tab${view === 'devops' ? ' active' : ''}`}
+            onClick={() => setView('devops')}
+          >
+            DevOps Staging
+          </button>
+          <button
             className={`nav-tab${view === 'settings' ? ' active' : ''}`}
             onClick={() => setView('settings')}
           >
@@ -93,6 +100,7 @@ export default function App() {
         {view === 'board' && settings && <Board settings={settings} />}
         {view === 'completed' && <CompletedView />}
         {view === 'archived' && <ArchivedView />}
+        {view === 'devops' && <DevOpsStagingView />}
         {view === 'settings' && (
           <SettingsView
             onDarkModeChange={handleDarkModeChange}
