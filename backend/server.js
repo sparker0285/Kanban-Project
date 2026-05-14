@@ -365,16 +365,25 @@ app.get('/api/devops/tasks', async (req, res) => {
     }
 
     const settings = await readSettings();
-    const projects = settings.devopsProjects || [];
-    if (!projects.length) {
-      return res.json([]);
-    }
+    let projects = settings.devopsProjects || [];
 
     const tasks = await readTasks();
     const importedIds = new Set(tasks.filter(t => t.devopsTaskNum).map(t => t.devopsTaskNum));
 
     const allItems = [];
     const auth = 'Basic ' + Buffer.from(`:${devopsPat}`).toString('base64');
+
+    // If no projects specified, fetch from all projects in the org
+    if (!projects.length) {
+      try {
+        const projectsUrl = `${devopsUrl}/_apis/projects?api-version=7.1`;
+        const projectsResult = await httpsRequest('GET', projectsUrl, null, auth);
+        projects = (projectsResult.value || []).map(p => p.name);
+      } catch (err) {
+        console.error('Failed to fetch all projects:', err.message);
+        return res.status(500).json({ error: 'Failed to fetch projects from Azure DevOps' });
+      }
+    }
 
     let authError = null;
     for (const project of projects) {
@@ -389,7 +398,7 @@ app.get('/api/devops/tasks', async (req, res) => {
 
         if (!workItemIds.length) continue;
 
-        const batchUrl = `${devopsUrl}/_apis/wit/workitems?ids=${workItemIds.join(',')}&fields=System.Id,System.Title,System.State,System.WorkItemType,System.AssignedTo,System.Description,System.TeamProject&api-version=7.1`;
+        const batchUrl = `${devopsUrl}/_apis/wit/workitems?ids=${workItemIds.join(',')}&fields=System.Id,System.Title,System.State,System.WorkItemType,System.AssignedTo,System.Description,System.TeamProject,System.IterationPath&api-version=7.1`;
         const batchResult = await httpsRequest('GET', batchUrl, null, auth);
 
         const items = (batchResult.value || [])
@@ -397,6 +406,8 @@ app.get('/api/devops/tasks', async (req, res) => {
           .map(wi => {
             const assignedTo = wi.fields['System.AssignedTo'];
             const assignedToName = typeof assignedTo === 'object' ? (assignedTo.displayName || assignedTo.uniqueName) : assignedTo;
+            const iterationPath = wi.fields['System.IterationPath'] || '';
+            const iteration = iterationPath.split('\\').pop() || '(No Iteration)';
             return {
               id: wi.id,
               title: wi.fields['System.Title'],
@@ -405,6 +416,7 @@ app.get('/api/devops/tasks', async (req, res) => {
               assignedTo: assignedToName || 'Unassigned',
               description: (wi.fields['System.Description'] || '').replace(/<[^>]*>/g, ''),
               project: wi.fields['System.TeamProject'],
+              iteration: iteration,
               devopsUrl: `${devopsUrl}/${encodeURIComponent(project)}/_workitems/edit/${wi.id}`,
             };
           });

@@ -74,8 +74,19 @@ export default function DevOpsStagingView() {
     if (!search) return true;
     const query = search.toLowerCase();
     return item.title.toLowerCase().includes(query) ||
-           (item.description && item.description.toLowerCase().includes(query));
+           (item.description && item.description.toLowerCase().includes(query)) ||
+           (item.project && item.project.toLowerCase().includes(query));
   });
+
+  // Group by project and sort
+  const groupedItems = {};
+  filteredItems.forEach(item => {
+    if (!groupedItems[item.project]) {
+      groupedItems[item.project] = [];
+    }
+    groupedItems[item.project].push(item);
+  });
+  const sortedProjects = Object.keys(groupedItems).sort();
 
   return (
     <div className="devops-staging-view">
@@ -113,7 +124,10 @@ export default function DevOpsStagingView() {
         </p>
       ) : (
         <div className="devops-items-list">
-          {filteredItems.map(item => (
+          {sortedProjects.map(project => (
+            <div key={project} className="devops-project-group">
+              <div className="project-group-header">{project}</div>
+              {groupedItems[project].map(item => (
             <div key={item.id} className="devops-item">
               <div className="item-header" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                 <div className="item-badges">
@@ -146,7 +160,7 @@ export default function DevOpsStagingView() {
                     {truncateText(item.description || '(no description)', 60)}
                   </p>
                   <p className="item-meta">
-                    <span>{item.project}</span> • <span>{item.assignedTo || 'Unassigned'}</span>
+                    <span>{item.iteration}</span> • <span>{item.assignedTo || 'Unassigned'}</span>
                   </p>
                 </div>
                 <button className="expand-btn" title={expandedId === item.id ? 'Collapse' : 'Expand'}>
@@ -187,6 +201,8 @@ export default function DevOpsStagingView() {
                   </div>
                 </div>
               )}
+            </div>
+              ))}
             </div>
           ))}
         </div>

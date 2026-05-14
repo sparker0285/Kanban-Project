@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
 **Last Updated:** 2026-05-14  
-**Project Status:** v1.2 — Live on Azure with custom domain
+**Project Status:** v1.3 — Live on Azure with DevOps integration
 
 ## Project Overview
 
@@ -18,6 +18,8 @@ A personal Kanban-style task management board running on Azure. React frontend +
 - **Frontend:** React 18 + Vite (HMR enabled)
 - **Backend:** Node.js + Express (Azure App Service)
 - **Storage:** Azure Blob Storage (container: `seth-kanban`)
+- **Secrets:** Azure Key Vault (Managed Identity access)
+- **External APIs:** Azure DevOps REST API (WIQL + batch fetch)
 - **Auth:** Managed Identity (no credentials in code)
 - **Hosting:** Azure App Service (B1 tier, Central US)
 - **Domain:** Custom domain via Namecheap DNS
@@ -39,12 +41,13 @@ frontend/
 │   ├── components/
 │   │   ├── Board.jsx (immediate UI updates on drag-drop)
 │   │   ├── Column.jsx
-│   │   ├── TaskCard.jsx
+│   │   ├── TaskCard.jsx (shows DevOps link if devopsItemUrl present)
 │   │   ├── AddTaskModal.jsx (Project/Customer field)
 │   │   ├── EditTaskModal.jsx (Project/Customer field)
 │   │   ├── CompletedView.jsx
 │   │   ├── ArchivedView.jsx
-│   │   ├── SettingsView.jsx (Archive column protected)
+│   │   ├── DevOpsStagingView.jsx (NEW: groups/sorts by project, shows iteration)
+│   │   ├── SettingsView.jsx (Archive column protected, DevOps Projects list)
 │   │   └── MoveTasksModal.jsx
 │   ├── index.css (all styles)
 │   ├── index.html (favicon.ico, page title)
@@ -55,7 +58,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 .github/workflows/azure-deploy.yml (GitHub Actions CI/CD)
 ```
 
-## Features (v1.2 - Current)
+## Features (v1.3 - Current)
 
 ✅ **Live on Azure**
 - Deployed to Azure App Service (B1, Central US)
@@ -97,6 +100,19 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Board name customization (reflected in browser tab title)
 - Column management: add, remove (with task migration), rename, reorder, color
 - Completed and Archive columns cannot be deleted
+- DevOps Projects list: add/remove Azure DevOps projects to sync from
+
+✅ **DevOps Staging Tab** (v1.3 - NEW)
+- One-way import from Azure DevOps (Tasks & Bugs only)
+- Fetches unresolved items assigned to you from specified projects
+- If no projects specified in Settings, fetches from all projects in the organization
+- Groups and sorts tasks by project with visual separators
+- Shows iteration (sprint) name, state badge, type badge
+- Direct links to DevOps work items (open in new tab)
+- Add items to Backlog or Priority column with one click
+- Automatically deduplicates (imported items tracked via devopsTaskNum)
+- Imported tasks show "Open in DevOps ↗" link on Board
+- Error handling with user-friendly messages for auth failures or missing secrets
 
 ✅ **UI/UX**
 - Dark mode CSS variables (all text readable)
@@ -109,12 +125,17 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 
 | Resource | Name | Details |
 |----------|------|---------|
-| App Service | seth-kanban-app-a9a7a8gzahc0dzbt | B1 tier, Node 24 LTS, Central US |
+| App Service | seth-kanban-app-a9a7a8gzahc0dzbt | B1 tier, Node 24 LTS, Central US, System-assigned Managed Identity |
 | Storage Account | sethappstorage | Blob storage, seth-kanban container |
+| Key Vault | kvsethkanban | Stores DevOps URL and PAT token (accessed via Managed Identity) |
 | Custom Domain | kanban.sethsapps.com | Via Namecheap DNS (CNAME + TXT) |
 | App Service Plan | kanban-plan | B1 Linux, Central US |
 
-## Data Model (v1.2)
+**Key Vault Secrets:**
+- `devops-url`: Azure DevOps organization URL (e.g., https://dev.azure.com/orgname)
+- `devops-token-qla`: Personal Access Token (PAT) with work item read scope
+
+## Data Model (v1.3)
 
 ### tasks.json (Active Tasks)
 ```json
@@ -126,6 +147,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
       "description": "Optional details",
       "customer": "Project/Customer name",
       "devopsTaskNum": null,
+      "devopsItemUrl": null,
       "column": "Priority",
       "createdAt": "2026-05-14T...",
       "completedAt": null,
@@ -136,7 +158,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 ```
 
 ### completed.json & archived.json
-Arrays of historical tasks with timestamps populated.
+Arrays of historical tasks with timestamps populated (same schema as tasks.json).
 
 ### settings.json
 ```json
@@ -145,9 +167,12 @@ Arrays of historical tasks with timestamps populated.
   "darkMode": true,
   "columns": ["Priority", "Backlog", "Archive", "Completed"],
   "columnColors": { ... },
-  "columnDisplayNames": { ... }
+  "columnDisplayNames": { ... },
+  "devopsProjects": ["ProjectA", "ProjectB"]
 }
 ```
+
+**Note:** `devopsProjects` array specifies which Azure DevOps projects to sync from. Empty array means fetch from all projects in the organization.
 
 ## API Endpoints
 
