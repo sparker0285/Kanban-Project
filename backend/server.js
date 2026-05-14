@@ -1,16 +1,23 @@
+console.log('=== SERVER STARTING ===');
+console.log('Node version:', process.version);
+console.log('Environment variables:');
+console.log('  AZURE_KEYVAULT_URL:', process.env.AZURE_KEYVAULT_URL);
+console.log('  AZURE_STORAGE_CONTAINER_NAME:', process.env.AZURE_STORAGE_CONTAINER_NAME);
+console.log('  PORT:', process.env.PORT);
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { DefaultAzureCredential } = require('@azure/identity');
-const { SecretClient } = require('@azure/keyvault-secrets');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const KEYVAULT_URL = process.env.AZURE_KEYVAULT_URL;
-const CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME;
+const STORAGE_ACCOUNT_NAME = process.env.AZURE_STORAGE_ACCOUNT_NAME || 'sethappstorage';
+const CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'seth-kanban';
 
 let containerClient;
 
@@ -30,21 +37,16 @@ const DEFAULT_SETTINGS = {
 };
 
 async function initStorage() {
-  console.log(`Initializing storage...`);
-  console.log(`Key Vault URL: ${KEYVAULT_URL}`);
-  console.log(`Container name: ${CONTAINER_NAME}`);
+  console.log(`Initializing storage with Managed Identity...`);
+  console.log(`Storage account: ${STORAGE_ACCOUNT_NAME}`);
+  console.log(`Container: ${CONTAINER_NAME}`);
 
   const credential = new DefaultAzureCredential();
-  console.log(`DefaultAzureCredential created`);
+  console.log(`DefaultAzureCredential created (using Managed Identity)`);
 
-  const kvClient = new SecretClient(KEYVAULT_URL, credential);
-  console.log(`SecretClient created, fetching secret...`);
-
-  const secret = await kvClient.getSecret('storage-connection-string');
-  console.log(`Secret retrieved successfully`);
-
-  const blobService = BlobServiceClient.fromConnectionString(secret.value);
-  console.log(`BlobServiceClient created`);
+  const blobServiceUrl = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net`;
+  const blobService = new BlobServiceClient(blobServiceUrl, credential);
+  console.log(`BlobServiceClient created for ${blobServiceUrl}`);
 
   containerClient = blobService.getContainerClient(CONTAINER_NAME);
   console.log(`Connected to storage container: ${CONTAINER_NAME}`);
@@ -292,10 +294,9 @@ initStorage()
     console.error('Error:', err.message);
     console.error('');
     console.error('Troubleshooting:');
-    console.error('1. Verify AZURE_KEYVAULT_URL is set in App Settings');
-    console.error('2. Verify AZURE_STORAGE_CONTAINER_NAME is set in App Settings');
-    console.error('3. Verify System-assigned Managed Identity is ON');
-    console.error('4. Verify App Service has "Key Vault Secrets User" role on Key Vault');
-    console.error('5. Verify secret "storage-connection-string" exists in Key Vault');
+    console.error('1. Verify System-assigned Managed Identity is ON on App Service');
+    console.error('2. Verify App Service has "Storage Blob Data Contributor" role on Storage Account');
+    console.error('3. Verify AZURE_STORAGE_ACCOUNT_NAME is set (or defaults to: sethappstorage)');
+    console.error('4. Verify AZURE_STORAGE_CONTAINER_NAME is set (or defaults to: seth-kanban)');
     process.exit(1);
   });
