@@ -21,6 +21,8 @@ const CONTAINER_NAME = process.env.AZURE_STORAGE_CONTAINER_NAME || 'seth-kanban'
 let containerClient;
 let devopsUrl;
 let devopsPat;
+let devopsSecretsLoaded = false;
+let devopsSecretsError = null;
 
 const DEFAULT_SETTINGS = {
   boardName: 'Kanban Task Board',
@@ -41,7 +43,8 @@ const DEFAULT_SETTINGS = {
 async function initDevopsSecrets(credential) {
   const vaultUrl = process.env.AZURE_KEYVAULT_URL;
   if (!vaultUrl) {
-    console.log('WARNING: AZURE_KEYVAULT_URL not set, DevOps integration disabled');
+    devopsSecretsError = 'AZURE_KEYVAULT_URL not configured';
+    console.log(`WARNING: ${devopsSecretsError}`);
     return;
   }
 
@@ -53,8 +56,10 @@ async function initDevopsSecrets(credential) {
     ]);
     devopsUrl = urlSecret.value.replace(/\/$/, '');
     devopsPat = patSecret.value;
+    devopsSecretsLoaded = true;
     console.log('DevOps secrets loaded from Key Vault');
   } catch (err) {
+    devopsSecretsError = err.message;
     console.log(`WARNING: Failed to load DevOps secrets: ${err.message}`);
   }
 }
@@ -351,8 +356,12 @@ app.delete('/api/tasks/:id', async (req, res) => {
 // GET /api/devops/tasks
 app.get('/api/devops/tasks', async (req, res) => {
   try {
-    if (!devopsUrl || !devopsPat) {
-      return res.status(503).json({ error: 'DevOps integration not configured' });
+    if (!devopsSecretsLoaded) {
+      const message = devopsSecretsError || 'DevOps integration not configured';
+      return res.status(503).json({
+        error: message,
+        details: 'Check Key Vault access and AZURE_KEYVAULT_URL environment variable'
+      });
     }
 
     const settings = await readSettings();
@@ -367,6 +376,7 @@ app.get('/api/devops/tasks', async (req, res) => {
     const allItems = [];
     const auth = 'Basic ' + Buffer.from(`:${devopsPat}`).toString('base64');
 
+    let authError = null;
     for (const project of projects) {
       try {
         const wiqlUrl = `${devopsUrl}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.1`;
@@ -397,14 +407,22 @@ app.get('/api/devops/tasks', async (req, res) => {
 
         allItems.push(...items);
       } catch (err) {
-        console.error(`Error fetching items for project ${project}:`, err.message);
+        const msg = err.message;
+        if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized') || msg.includes('Forbidden')) {
+          authError = 'Invalid or expired DevOps Personal Access Token (PAT)';
+        }
+        console.error(`Error fetching items for project ${project}:`, msg);
       }
+    }
+
+    if (authError) {
+      return res.status(401).json({ error: authError });
     }
 
     res.json(allItems);
   } catch (err) {
     console.error('Error in GET /api/devops/tasks:', err);
-    res.status(500).json({ error: 'Failed to fetch DevOps tasks' });
+    res.status(500).json({ error: 'Failed to fetch DevOps tasks', details: err.message });
   }
 });
 

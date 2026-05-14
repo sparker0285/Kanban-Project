@@ -4,6 +4,7 @@ import { getDevopsTasks, importDevopsTask } from '../api';
 export default function DevOpsStagingView() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [importing, setImporting] = useState(null);
@@ -14,11 +15,22 @@ export default function DevOpsStagingView() {
 
   const fetchItems = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await getDevopsTasks();
       setItems(result);
     } catch (err) {
       console.error('Failed to load DevOps items:', err);
+      let errorMsg = 'Failed to load DevOps items';
+      if (err.response?.status === 503) {
+        errorMsg = err.response.data?.error || 'DevOps integration not configured. Check Key Vault secrets.';
+      } else if (err.response?.status === 401) {
+        errorMsg = err.response.data?.error || 'Authentication failed. Check your DevOps Personal Access Token.';
+      } else if (err.response?.data?.error) {
+        errorMsg = err.response.data.error;
+      }
+      setError(errorMsg);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -79,12 +91,22 @@ export default function DevOpsStagingView() {
         />
       </div>
 
-      <p className="task-count-info">
-        {filteredItems.length} of {items.length} items
-      </p>
+      {error && (
+        <div className="error-message">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {!error && (
+        <p className="task-count-info">
+          {filteredItems.length} of {items.length} items
+        </p>
+      )}
 
       {loading ? (
         <p>Loading...</p>
+      ) : error ? (
+        <p className="no-tasks">Please check your DevOps configuration and try again.</p>
       ) : filteredItems.length === 0 ? (
         <p className="no-tasks">
           {items.length === 0 ? 'No DevOps items to stage. Configure projects in Settings.' : 'No items match your search.'}

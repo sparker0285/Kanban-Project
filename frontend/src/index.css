@@ -1321,3 +1321,10 @@ body {
   border-color: #555;
   color: #ffffff;
 }
+
+.dark-mode .devops-staging-view .error-message,
+.app.dark-mode .devops-staging-view .error-message {
+  background: #3d2929;
+  border-color: #6b3a3a;
+  color: #ff9999;
+}
