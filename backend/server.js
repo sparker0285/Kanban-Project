@@ -30,10 +30,22 @@ const DEFAULT_SETTINGS = {
 };
 
 async function initStorage() {
+  console.log(`Initializing storage...`);
+  console.log(`Key Vault URL: ${KEYVAULT_URL}`);
+  console.log(`Container name: ${CONTAINER_NAME}`);
+
   const credential = new DefaultAzureCredential();
+  console.log(`DefaultAzureCredential created`);
+
   const kvClient = new SecretClient(KEYVAULT_URL, credential);
+  console.log(`SecretClient created, fetching secret...`);
+
   const secret = await kvClient.getSecret('storage-connection-string');
+  console.log(`Secret retrieved successfully`);
+
   const blobService = BlobServiceClient.fromConnectionString(secret.value);
+  console.log(`BlobServiceClient created`);
+
   containerClient = blobService.getContainerClient(CONTAINER_NAME);
   console.log(`Connected to storage container: ${CONTAINER_NAME}`);
 }
@@ -269,8 +281,21 @@ app.get('*', (req, res) => {
 });
 
 initStorage()
-  .then(() => app.listen(PORT, () => console.log(`Kanban backend running on port ${PORT}`)))
+  .then(() => {
+    const actualPort = process.env.PORT || 5000;
+    app.listen(actualPort, '0.0.0.0', () => {
+      console.log(`Kanban backend running on port ${actualPort}`);
+    });
+  })
   .catch(err => {
-    console.error('Failed to initialize storage:', err.message);
+    console.error('FATAL: Failed to initialize storage');
+    console.error('Error:', err.message);
+    console.error('');
+    console.error('Troubleshooting:');
+    console.error('1. Verify AZURE_KEYVAULT_URL is set in App Settings');
+    console.error('2. Verify AZURE_STORAGE_CONTAINER_NAME is set in App Settings');
+    console.error('3. Verify System-assigned Managed Identity is ON');
+    console.error('4. Verify App Service has "Key Vault Secrets User" role on Key Vault');
+    console.error('5. Verify secret "storage-connection-string" exists in Key Vault');
     process.exit(1);
   });
