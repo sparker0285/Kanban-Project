@@ -54,11 +54,17 @@ export default function DevOpsStagingView() {
   };
 
   const collapseAllProjects = () => {
-    const collapsed = {};
+    const collapsedProjects = {};
+    const collapsedIterations = {};
     sortedProjects.forEach(project => {
-      collapsed[project] = false;
+      collapsedProjects[project] = false;
+      const iterationsInProject = Object.keys(groupedItems[project] || {}).sort();
+      iterationsInProject.forEach(iteration => {
+        collapsedIterations[`${project}|${iteration}`] = false;
+      });
     });
-    setExpandedProjects(collapsed);
+    setExpandedProjects(collapsedProjects);
+    setExpandedIterations(collapsedIterations);
   };
 
   const toggleIterationExpansion = (key) => {

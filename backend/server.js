@@ -430,7 +430,17 @@ app.get('/api/devops/tasks', async (req, res) => {
       return res.status(401).json({ error: authError });
     }
 
-    res.json(allItems);
+    // Deduplicate by work item ID (keep first occurrence)
+    const seenIds = new Set();
+    const deduplicatedItems = allItems.filter(item => {
+      if (seenIds.has(item.id)) {
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
+
+    res.json(deduplicatedItems);
   } catch (err) {
     console.error('Error in GET /api/devops/tasks:', err);
     res.status(500).json({ error: 'Failed to fetch DevOps tasks', details: err.message });
