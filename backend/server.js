@@ -1,10 +1,20 @@
-console.log('=== SERVER STARTING ===');
-console.log('Node version:', process.version);
-console.log('Environment variables:');
-console.log('  AZURE_KEYVAULT_URL:', process.env.AZURE_KEYVAULT_URL);
-console.log('  AZURE_STORAGE_CONTAINER_NAME:', process.env.AZURE_STORAGE_CONTAINER_NAME);
-console.log('  PORT:', process.env.PORT);
-console.log('  NODE_ENV:', process.env.NODE_ENV);
+const fs = require('fs');
+const logPath = '/tmp/kanban-startup.log';
+
+function log(msg) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${msg}\n`;
+  console.log(msg);
+  try { fs.appendFileSync(logPath, line); } catch (e) {}
+}
+
+log('=== SERVER STARTING ===');
+log('Node version: ' + process.version);
+log('Environment variables:');
+log('  AZURE_STORAGE_ACCOUNT_NAME: ' + process.env.AZURE_STORAGE_ACCOUNT_NAME);
+log('  AZURE_STORAGE_CONTAINER_NAME: ' + process.env.AZURE_STORAGE_CONTAINER_NAME);
+log('  PORT: ' + process.env.PORT);
+log('  NODE_ENV: ' + process.env.NODE_ENV);
 
 require('dotenv').config();
 const express = require('express');
@@ -37,19 +47,24 @@ const DEFAULT_SETTINGS = {
 };
 
 async function initStorage() {
-  console.log(`Initializing storage with Managed Identity...`);
-  console.log(`Storage account: ${STORAGE_ACCOUNT_NAME}`);
-  console.log(`Container: ${CONTAINER_NAME}`);
+  log(`Initializing storage with Managed Identity...`);
+  log(`Storage account: ${STORAGE_ACCOUNT_NAME}`);
+  log(`Container: ${CONTAINER_NAME}`);
 
-  const credential = new DefaultAzureCredential();
-  console.log(`DefaultAzureCredential created (using Managed Identity)`);
+  try {
+    const credential = new DefaultAzureCredential();
+    log(`DefaultAzureCredential created (using Managed Identity)`);
 
-  const blobServiceUrl = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net`;
-  const blobService = new BlobServiceClient(blobServiceUrl, credential);
-  console.log(`BlobServiceClient created for ${blobServiceUrl}`);
+    const blobServiceUrl = `https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net`;
+    const blobService = new BlobServiceClient(blobServiceUrl, credential);
+    log(`BlobServiceClient created for ${blobServiceUrl}`);
 
-  containerClient = blobService.getContainerClient(CONTAINER_NAME);
-  console.log(`Connected to storage container: ${CONTAINER_NAME}`);
+    containerClient = blobService.getContainerClient(CONTAINER_NAME);
+    log(`Connected to storage container: ${CONTAINER_NAME}`);
+  } catch (err) {
+    log(`ERROR during initStorage: ${err.message}`);
+    throw err;
+  }
 }
 
 async function readBlob(blobName, defaultValue) {
@@ -286,17 +301,17 @@ initStorage()
   .then(() => {
     const actualPort = process.env.PORT || 5000;
     app.listen(actualPort, '0.0.0.0', () => {
-      console.log(`Kanban backend running on port ${actualPort}`);
+      log(`Kanban backend running on port ${actualPort}`);
     });
   })
   .catch(err => {
-    console.error('FATAL: Failed to initialize storage');
-    console.error('Error:', err.message);
-    console.error('');
-    console.error('Troubleshooting:');
-    console.error('1. Verify System-assigned Managed Identity is ON on App Service');
-    console.error('2. Verify App Service has "Storage Blob Data Contributor" role on Storage Account');
-    console.error('3. Verify AZURE_STORAGE_ACCOUNT_NAME is set (or defaults to: sethappstorage)');
-    console.error('4. Verify AZURE_STORAGE_CONTAINER_NAME is set (or defaults to: seth-kanban)');
+    log('FATAL: Failed to initialize storage');
+    log('Error: ' + err.message);
+    log('');
+    log('Troubleshooting:');
+    log('1. Verify System-assigned Managed Identity is ON on App Service');
+    log('2. Verify App Service has "Storage Blob Data Contributor" role on Storage Account');
+    log('3. Verify AZURE_STORAGE_ACCOUNT_NAME is set (or defaults to: sethappstorage)');
+    log('4. Verify AZURE_STORAGE_CONTAINER_NAME is set (or defaults to: seth-kanban)');
     process.exit(1);
   });
