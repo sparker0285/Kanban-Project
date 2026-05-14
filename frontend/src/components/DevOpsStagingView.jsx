@@ -101,7 +101,7 @@ export default function DevOpsStagingView() {
   const sortedProjects = Object.keys(groupedItems).sort();
 
   // Default: expand all projects on first load
-  React.useEffect(() => {
+  useEffect(() => {
     if (sortedProjects.length > 0 && Object.keys(expandedProjects).length === 0) {
       const defaultExpanded = {};
       sortedProjects.forEach(project => {
