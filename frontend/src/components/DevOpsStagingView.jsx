@@ -7,6 +7,7 @@ export default function DevOpsStagingView() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [expandedProjects, setExpandedProjects] = useState({});
   const [importing, setImporting] = useState(null);
 
   useEffect(() => {
@@ -34,6 +35,13 @@ export default function DevOpsStagingView() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleProjectExpansion = (project) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [project]: !prev[project]
+    }));
   };
 
   const handleImport = async (item, column) => {
@@ -78,15 +86,30 @@ export default function DevOpsStagingView() {
            (item.project && item.project.toLowerCase().includes(query));
   });
 
-  // Group by project and sort
+  // Group by project, then by iteration
   const groupedItems = {};
   filteredItems.forEach(item => {
     if (!groupedItems[item.project]) {
-      groupedItems[item.project] = [];
+      groupedItems[item.project] = {};
     }
-    groupedItems[item.project].push(item);
+    const iteration = item.iteration || '(No Iteration)';
+    if (!groupedItems[item.project][iteration]) {
+      groupedItems[item.project][iteration] = [];
+    }
+    groupedItems[item.project][iteration].push(item);
   });
   const sortedProjects = Object.keys(groupedItems).sort();
+
+  // Default: expand all projects on first load
+  React.useEffect(() => {
+    if (sortedProjects.length > 0 && Object.keys(expandedProjects).length === 0) {
+      const defaultExpanded = {};
+      sortedProjects.forEach(project => {
+        defaultExpanded[project] = true;
+      });
+      setExpandedProjects(defaultExpanded);
+    }
+  }, [items.length]);
 
   return (
     <div className="devops-staging-view">
@@ -124,10 +147,26 @@ export default function DevOpsStagingView() {
         </p>
       ) : (
         <div className="devops-items-list">
-          {sortedProjects.map(project => (
+          {sortedProjects.map(project => {
+            const isProjectExpanded = expandedProjects[project] !== false;
+            const iterationsInProject = Object.keys(groupedItems[project]).sort();
+
+            return (
             <div key={project} className="devops-project-group">
-              <div className="project-group-header">{project}</div>
-              {groupedItems[project].map(item => (
+              <div
+                className="project-group-header"
+                onClick={() => toggleProjectExpansion(project)}
+                style={{ cursor: 'pointer' }}
+              >
+                <span className="project-toggle-icon">{isProjectExpanded ? '▼' : '▶'}</span>
+                {project}
+              </div>
+              {isProjectExpanded && (
+                <div className="project-items-container">
+                  {iterationsInProject.map(iteration => (
+                    <div key={`${project}-${iteration}`} className="devops-iteration-group">
+                      <div className="iteration-group-header">{iteration}</div>
+                      {groupedItems[project][iteration].map(item => (
             <div key={item.id} className="devops-item">
               <div className="item-header" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                 <div className="item-badges">
@@ -160,7 +199,7 @@ export default function DevOpsStagingView() {
                     {truncateText(item.description || '(no description)', 60)}
                   </p>
                   <p className="item-meta">
-                    <span>{item.iteration}</span> • <span>{item.assignedTo || 'Unassigned'}</span>
+                    <span>{item.assignedTo || 'Unassigned'}</span>
                   </p>
                 </div>
                 <button className="expand-btn" title={expandedId === item.id ? 'Collapse' : 'Expand'}>
@@ -201,10 +240,15 @@ export default function DevOpsStagingView() {
                   </div>
                 </div>
               )}
+                    </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-              ))}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
