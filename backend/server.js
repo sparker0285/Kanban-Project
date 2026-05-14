@@ -81,12 +81,16 @@ async function writeSettings(data) {
 
 async function readTasks() {
   const data = await readBlob('tasks.json', { tasks: [] });
-  return data.tasks || data;
+  const taskList = data.tasks || data;
+  console.log(`readTasks: Found ${Array.isArray(taskList) ? taskList.length : 0} tasks`);
+  return taskList;
 }
 
 async function writeTasks(tasks) {
+  console.log(`writeTasks: Writing ${Array.isArray(tasks) ? tasks.length : 0} tasks`);
   const settings = await readSettings();
-  return writeBlob('tasks.json', { tasks, columns: settings.columns });
+  await writeBlob('tasks.json', { tasks, columns: settings.columns });
+  console.log(`writeTasks: Successfully wrote tasks to blob`);
 }
 
 async function readCompleted() {

@@ -102,8 +102,8 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
   };
 
   const handleRemoveColumn = async (column) => {
-    if (column === 'Completed' || column === settings.columnDisplayNames.Completed) {
-      setError('Cannot remove the Completed column');
+    if (column === 'Completed' || column === 'Archive' || column === settings.columnDisplayNames.Completed) {
+      setError('Cannot remove the Completed or Archive columns');
       return;
     }
 
