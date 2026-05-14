@@ -461,6 +461,30 @@ body {
   background: #f9f9f9;
 }
 
+.expand-collapse-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.btn-expand-all,
+.btn-collapse-all {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.btn-expand-all:hover,
+.btn-collapse-all:hover {
+  border-color: #999;
+  background: #f9f9f9;
+}
+
 .search-bar {
   margin-bottom: 16px;
 }
@@ -1166,6 +1190,32 @@ body {
   margin-bottom: 6px;
   padding: 4px 0;
   font-style: italic;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s ease;
+}
+
+.iteration-group-header:hover {
+  background: rgba(96, 165, 250, 0.05);
+  border-radius: 3px;
+  padding: 4px 4px;
+}
+
+.iteration-toggle-icon {
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.iteration-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 4px;
 }
 
 .devops-iteration-group > .devops-item {
@@ -1414,4 +1464,26 @@ body {
 .dark-mode .iteration-group-header,
 .app.dark-mode .iteration-group-header {
   color: #93c5fd;
+}
+
+.dark-mode .iteration-group-header:hover,
+.app.dark-mode .iteration-group-header:hover {
+  background: rgba(147, 197, 253, 0.1);
+}
+
+.dark-mode .btn-expand-all,
+.dark-mode .btn-collapse-all,
+.app.dark-mode .btn-expand-all,
+.app.dark-mode .btn-collapse-all {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border-color: #4a4a4a;
+}
+
+.dark-mode .btn-expand-all:hover,
+.dark-mode .btn-collapse-all:hover,
+.app.dark-mode .btn-expand-all:hover,
+.app.dark-mode .btn-collapse-all:hover {
+  background: #454545;
+  border-color: #555;
 }

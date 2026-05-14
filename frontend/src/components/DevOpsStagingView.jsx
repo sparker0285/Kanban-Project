@@ -8,6 +8,7 @@ export default function DevOpsStagingView() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [expandedProjects, setExpandedProjects] = useState({});
+  const [expandedIterations, setExpandedIterations] = useState({});
   const [importing, setImporting] = useState(null);
 
   useEffect(() => {
@@ -41,6 +42,29 @@ export default function DevOpsStagingView() {
     setExpandedProjects(prev => ({
       ...prev,
       [project]: !prev[project]
+    }));
+  };
+
+  const expandAllProjects = () => {
+    const expanded = {};
+    sortedProjects.forEach(project => {
+      expanded[project] = true;
+    });
+    setExpandedProjects(expanded);
+  };
+
+  const collapseAllProjects = () => {
+    const collapsed = {};
+    sortedProjects.forEach(project => {
+      collapsed[project] = false;
+    });
+    setExpandedProjects(collapsed);
+  };
+
+  const toggleIterationExpansion = (key) => {
+    setExpandedIterations(prev => ({
+      ...prev,
+      [key]: !prev[key]
     }));
   };
 
@@ -125,6 +149,17 @@ export default function DevOpsStagingView() {
         />
       </div>
 
+      {filteredItems.length > 0 && (
+        <div className="expand-collapse-buttons">
+          <button onClick={expandAllProjects} className="btn-expand-all">
+            Expand All
+          </button>
+          <button onClick={collapseAllProjects} className="btn-collapse-all">
+            Collapse All
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="error-message">
           <strong>Error:</strong> {error}
@@ -163,11 +198,24 @@ export default function DevOpsStagingView() {
               </div>
               {isProjectExpanded && (
                 <div className="project-items-container">
-                  {iterationsInProject.map(iteration => (
-                    <div key={`${project}-${iteration}`} className="devops-iteration-group">
-                      <div className="iteration-group-header">{iteration}</div>
-                      {groupedItems[project][iteration].map(item => (
-            <div key={item.id} className="devops-item">
+                  {iterationsInProject.map(iteration => {
+                    const iterationKey = `${project}|${iteration}`;
+                    const isIterationExpanded = expandedIterations[iterationKey] !== false;
+
+                    return (
+                    <div key={iterationKey} className="devops-iteration-group">
+                      <div
+                        className="iteration-group-header"
+                        onClick={() => toggleIterationExpansion(iterationKey)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <span className="iteration-toggle-icon">{isIterationExpanded ? '▼' : '▶'}</span>
+                        {iteration}
+                      </div>
+{isIterationExpanded && (
+                        <div className="iteration-items-container">
+                          {groupedItems[project][iteration].map(item => (
+                            <div key={item.id} className="devops-item">
               <div className="item-header" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                 <div className="item-badges">
                   <span
@@ -240,10 +288,13 @@ export default function DevOpsStagingView() {
                   </div>
                 </div>
               )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                      ))}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
