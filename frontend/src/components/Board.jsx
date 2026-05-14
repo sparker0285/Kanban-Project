@@ -43,10 +43,20 @@ export default function Board({ settings }) {
 
     try {
       const updates = { column: destination.droppableId };
+
+      // Set completedAt/archivedAt on frontend for immediate UI update
+      const completedCol = settings?.columnDisplayNames?.Completed || 'Completed';
+      if (destination.droppableId === completedCol && !task.completedAt) {
+        updates.completedAt = new Date().toISOString();
+      }
+      if (destination.droppableId === 'Archive' && !task.archivedAt) {
+        updates.archivedAt = new Date().toISOString();
+      }
+
       await updateTask(draggableId, updates);
       setTasks(
         tasks.map(t =>
-          t.id === draggableId ? { ...t, column: destination.droppableId } : t
+          t.id === draggableId ? { ...t, ...updates } : t
         )
       );
     } catch (err) {
