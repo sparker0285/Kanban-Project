@@ -328,7 +328,7 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
                 >
                   ▼
                 </button>
-                {column !== completedColumnName && (
+                {column !== completedColumnName && column !== 'Archive' && (
                   <button
                     onClick={() => handleRemoveColumn(column)}
                     className="btn-danger"

@@ -47,11 +47,11 @@ export default function AddTaskModal({ column, onAdd, onClose }) {
             />
           </label>
           <label>
-            Customer
+            Project/Customer
             <input
               value={customer}
               onChange={e => setCustomer(e.target.value)}
-              placeholder="Customer name"
+              placeholder="Project or customer name"
             />
           </label>
           <label>
