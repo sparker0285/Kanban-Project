@@ -366,6 +366,7 @@ app.get('/api/devops/tasks', async (req, res) => {
 
     const settings = await readSettings();
     let projects = settings.devopsProjects || [];
+    console.log('DevOps: Projects from settings:', JSON.stringify(projects));
 
     const tasks = await readTasks();
     const importedIds = new Set(tasks.filter(t => t.devopsTaskNum).map(t => t.devopsTaskNum));
@@ -375,6 +376,7 @@ app.get('/api/devops/tasks', async (req, res) => {
 
     // If no projects specified, fetch from all projects in the org
     if (!projects.length) {
+      console.log('DevOps: No projects specified, fetching all projects from org');
       try {
         const projectsUrl = `${devopsUrl}/_apis/projects?api-version=7.1`;
         const projectsResult = await httpsRequest('GET', projectsUrl, null, auth);
@@ -385,9 +387,11 @@ app.get('/api/devops/tasks', async (req, res) => {
       }
     }
 
+    console.log('DevOps: Querying projects:', JSON.stringify(projects));
     let authError = null;
     for (const project of projects) {
       try {
+        console.log(`DevOps: Fetching items from project "${project}"`);
         const wiqlUrl = `${devopsUrl}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.1`;
         const wiqlBody = {
           query: `SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] IN ('Task','Bug') AND [System.AssignedTo] = 'sparker@quicklaunchanalytics.com' AND [System.State] NOT IN ('Closed','Removed')`,
@@ -395,6 +399,7 @@ app.get('/api/devops/tasks', async (req, res) => {
 
         const wiqlResult = await httpsRequest('POST', wiqlUrl, wiqlBody, auth);
         const workItemIds = wiqlResult.workItems?.map(wi => wi.id) || [];
+        console.log(`DevOps: Found ${workItemIds.length} work items in project "${project}"`);
 
         if (!workItemIds.length) continue;
 
