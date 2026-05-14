@@ -381,7 +381,7 @@ app.get('/api/devops/tasks', async (req, res) => {
       try {
         const wiqlUrl = `${devopsUrl}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.1`;
         const wiqlBody = {
-          query: `SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] IN ('Task','Bug') AND [System.AssignedTo] = 'sparker@quicklaunchanalytics.com' AND [System.State] NOT IN ('Closed','Done','Removed')`,
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] IN ('Task','Bug') AND [System.AssignedTo] = 'sparker@quicklaunchanalytics.com' AND [System.State] NOT IN ('Closed','Removed')`,
         };
 
         const wiqlResult = await httpsRequest('POST', wiqlUrl, wiqlBody, auth);
@@ -394,16 +394,20 @@ app.get('/api/devops/tasks', async (req, res) => {
 
         const items = (batchResult.value || [])
           .filter(wi => !importedIds.has(wi.id))
-          .map(wi => ({
-            id: wi.id,
-            title: wi.fields['System.Title'],
-            state: wi.fields['System.State'],
-            type: wi.fields['System.WorkItemType'],
-            assignedTo: wi.fields['System.AssignedTo'],
-            description: (wi.fields['System.Description'] || '').replace(/<[^>]*>/g, ''),
-            project: wi.fields['System.TeamProject'],
-            devopsUrl: `${devopsUrl}/${encodeURIComponent(project)}/_workitems/edit/${wi.id}`,
-          }));
+          .map(wi => {
+            const assignedTo = wi.fields['System.AssignedTo'];
+            const assignedToName = typeof assignedTo === 'object' ? (assignedTo.displayName || assignedTo.uniqueName) : assignedTo;
+            return {
+              id: wi.id,
+              title: wi.fields['System.Title'],
+              state: wi.fields['System.State'],
+              type: wi.fields['System.WorkItemType'],
+              assignedTo: assignedToName || 'Unassigned',
+              description: (wi.fields['System.Description'] || '').replace(/<[^>]*>/g, ''),
+              project: wi.fields['System.TeamProject'],
+              devopsUrl: `${devopsUrl}/${encodeURIComponent(project)}/_workitems/edit/${wi.id}`,
+            };
+          });
 
         allItems.push(...items);
       } catch (err) {
