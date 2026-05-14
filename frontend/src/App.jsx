@@ -24,6 +24,12 @@ export default function App() {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    if (settings?.boardName) {
+      document.title = settings.boardName;
+    }
+  }, [settings]);
+
   const loadSettings = async () => {
     try {
       const data = await getSettings();
