@@ -125,7 +125,7 @@ export default function DevOpsStagingView() {
         column,
         devopsUrl: item.devopsUrl,
       });
-      const updated = items.filter(i => i.id !== item.id);
+      const updated = items.map(i => i.id === item.id ? { ...i, boardColumn: column } : i);
       setItems(updated);
       saveCache(updated);
     } catch (err) {
@@ -225,6 +225,9 @@ export default function DevOpsStagingView() {
       {!error && (
         <p className="task-count-info">
           {filteredItems.length} of {items.length} items
+          {filteredItems.filter(i => i.boardColumn).length > 0 && (
+            <span className="task-count-imported"> · {filteredItems.filter(i => i.boardColumn).length} on board</span>
+          )}
         </p>
       )}
 
@@ -271,7 +274,7 @@ export default function DevOpsStagingView() {
 {isIterationExpanded && (
                         <div className="iteration-items-container">
                           {groupedItems[project][iteration].map(item => (
-                            <div key={item.id} className="devops-item">
+                            <div key={item.id} className={`devops-item${item.boardColumn ? ' devops-item-imported' : ''}`}>
               <div className="item-header" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                 <div className="item-badges">
                   <span
@@ -288,6 +291,11 @@ export default function DevOpsStagingView() {
                   >
                     {item.state}
                   </span>
+                  {item.boardColumn && (
+                    <span className="badge badge-board-column">
+                      {item.boardColumn}
+                    </span>
+                  )}
                 </div>
                 <div className="item-header-content">
                   <a
@@ -326,22 +334,26 @@ export default function DevOpsStagingView() {
                     <p className="detail-label">State:</p>
                     <p className="detail-value">{item.state}</p>
                   </div>
-                  <div className="item-actions">
-                    <button
-                      onClick={() => handleImport(item, 'Backlog')}
-                      disabled={importing === item.id}
-                      className="btn-primary"
-                    >
-                      {importing === item.id ? '...' : 'Add to Backlog'}
-                    </button>
-                    <button
-                      onClick={() => handleImport(item, 'Priority')}
-                      disabled={importing === item.id}
-                      className="btn-secondary"
-                    >
-                      {importing === item.id ? '...' : 'Add to Priority'}
-                    </button>
-                  </div>
+                  {item.boardColumn ? (
+                    <p className="item-on-board-msg">On board in <strong>{item.boardColumn}</strong></p>
+                  ) : (
+                    <div className="item-actions">
+                      <button
+                        onClick={() => handleImport(item, 'Backlog')}
+                        disabled={importing === item.id}
+                        className="btn-primary"
+                      >
+                        {importing === item.id ? '...' : 'Add to Backlog'}
+                      </button>
+                      <button
+                        onClick={() => handleImport(item, 'Priority')}
+                        disabled={importing === item.id}
+                        className="btn-secondary"
+                      >
+                        {importing === item.id ? '...' : 'Add to Priority'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
                             </div>

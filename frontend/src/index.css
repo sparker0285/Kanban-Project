@@ -1326,6 +1326,28 @@ body {
   background: #3b82f6;
 }
 
+.badge-board-column {
+  background: #059669;
+}
+
+.devops-item-imported {
+  opacity: 0.55;
+}
+
+.devops-item-imported:hover {
+  opacity: 0.8;
+}
+
+.item-on-board-msg {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+}
+
+.task-count-imported {
+  color: #6b7280;
+}
+
 .item-header-content {
   flex: 1;
   text-align: left;
@@ -1450,6 +1472,16 @@ body {
 .app.dark-mode .devops-item {
   background: #2a2a2a;
   border-color: #3a3a3a;
+}
+
+.dark-mode .item-on-board-msg,
+.app.dark-mode .item-on-board-msg {
+  color: #9ca3af;
+}
+
+.dark-mode .task-count-imported,
+.app.dark-mode .task-count-imported {
+  color: #9ca3af;
 }
 
 .dark-mode .item-header:hover,

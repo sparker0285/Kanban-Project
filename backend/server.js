@@ -364,7 +364,11 @@ app.get('/api/devops/tasks', async (req, res) => {
     }
 
     const tasks = await readTasks();
-    const importedIds = new Set(tasks.filter(t => t.devopsTaskNum).map(t => t.devopsTaskNum));
+    // Map devopsTaskNum → column for active board tasks only (completed/archived don't show on staging)
+    const importedColumnMap = {};
+    tasks.filter(t => t.devopsTaskNum).forEach(t => {
+      importedColumnMap[t.devopsTaskNum] = t.column;
+    });
 
     const allItems = [];
     const auth = 'Basic ' + Buffer.from(`:${devopsPat}`).toString('base64');
@@ -397,7 +401,6 @@ app.get('/api/devops/tasks', async (req, res) => {
         const batchResult = await httpsRequest('GET', batchUrl, null, auth);
 
         const items = (batchResult.value || [])
-          .filter(wi => !importedIds.has(wi.id))
           .map(wi => {
             const assignedTo = wi.fields['System.AssignedTo'];
             const assignedToName = typeof assignedTo === 'object' ? (assignedTo.displayName || assignedTo.uniqueName) : assignedTo;
@@ -413,6 +416,7 @@ app.get('/api/devops/tasks', async (req, res) => {
               project: wi.fields['System.TeamProject'],
               iteration: iteration,
               devopsUrl: `${devopsUrl}/${encodeURIComponent(project)}/_workitems/edit/${wi.id}`,
+              boardColumn: importedColumnMap[wi.id] || null,
             };
           });
 
