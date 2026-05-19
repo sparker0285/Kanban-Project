@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-14  
-**Project Status:** v1.3 — Live on Azure with DevOps integration
+**Last Updated:** 2026-05-19  
+**Project Status:** v1.3 — Live on Azure with DevOps Staging integration
 
 ## Project Overview
 
@@ -46,8 +46,8 @@ frontend/
 │   │   ├── EditTaskModal.jsx (Project/Customer field)
 │   │   ├── CompletedView.jsx
 │   │   ├── ArchivedView.jsx
-│   │   ├── DevOpsStagingView.jsx (NEW: groups/sorts by project, shows iteration)
-│   │   ├── SettingsView.jsx (Archive column protected, DevOps Projects list)
+│   │   ├── DevOpsStagingView.jsx (DevOps items grouped by project then iteration, expand/collapse)
+│   │   ├── SettingsView.jsx (Archive column protected)
 │   │   └── MoveTasksModal.jsx
 │   ├── index.css (all styles)
 │   ├── index.html (favicon.ico, page title)
@@ -100,19 +100,20 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Board name customization (reflected in browser tab title)
 - Column management: add, remove (with task migration), rename, reorder, color
 - Completed and Archive columns cannot be deleted
-- DevOps Projects list: add/remove Azure DevOps projects to sync from
 
-✅ **DevOps Staging Tab** (v1.3 - NEW)
-- One-way import from Azure DevOps (Tasks & Bugs only)
-- Fetches unresolved items assigned to you from specified projects
-- If no projects specified in Settings, fetches from all projects in the organization
-- Groups and sorts tasks by project with visual separators
-- Shows iteration (sprint) name, state badge, type badge
-- Direct links to DevOps work items (open in new tab)
-- Add items to Backlog or Priority column with one click
-- Automatically deduplicates (imported items tracked via devopsTaskNum)
-- Imported tasks show "Open in DevOps ↗" link on Board
-- Error handling with user-friendly messages for auth failures or missing secrets
+✅ **DevOps Staging Tab** (v1.3)
+- One-way import from Azure DevOps (Tasks & Bugs only, excluding Closed/Removed)
+- Fetches all items assigned to sparker@quicklaunchanalytics.com across all org projects
+- Grouped by Project → Iteration with collapsible headers (click to expand/collapse)
+- Expand All / Collapse All buttons collapse both projects and iterations
+- Shows state badge, type badge, iteration name, assigned to
+- Title is a direct link to the work item in Azure DevOps (opens in new tab)
+- Add items to Backlog or Priority with one click
+- Imported items removed from staging immediately; never reappear (tracked via devopsTaskNum)
+- Deduplicates work items that appear across multiple projects
+- Imported tasks show "Open in DevOps ↗" link on Board TaskCard
+- Error handling: shows user-friendly message if Key Vault fails or PAT is expired
+- PAT stored in Key Vault as `devops-token-qla`; org URL stored as `devops-url`
 
 ✅ **UI/UX**
 - Dark mode CSS variables (all text readable)
@@ -135,6 +136,12 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - `devops-url`: Azure DevOps organization URL (e.g., https://dev.azure.com/orgname)
 - `devops-token-qla`: Personal Access Token (PAT) with work item read scope
 
+**Managed Identity Role Assignments:**
+- Storage Account: `Storage Blob Data Contributor`
+- Key Vault: `Key Vault Secrets User` (system-assigned MI only — a second MI `seth-kanban-app-id-8aae` should not be given access)
+
+**Kudu URL:** `https://seth-kanban-app-a9a7a8gzahc0dzbt.scm.centralus-01.azurewebsites.net/`
+
 ## Data Model (v1.3)
 
 ### tasks.json (Active Tasks)
@@ -149,13 +156,15 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
       "devopsTaskNum": null,
       "devopsItemUrl": null,
       "column": "Priority",
-      "createdAt": "2026-05-14T...",
+      "createdAt": "2026-05-19T...",
       "completedAt": null,
       "archivedAt": null
     }
   ]
 }
 ```
+
+`devopsTaskNum` + `devopsItemUrl` are set when a task is imported from DevOps Staging. `devopsItemUrl` is the full work item URL shown as a link on TaskCard.
 
 ### completed.json & archived.json
 Arrays of historical tasks with timestamps populated (same schema as tasks.json).
@@ -167,12 +176,9 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
   "darkMode": true,
   "columns": ["Priority", "Backlog", "Archive", "Completed"],
   "columnColors": { ... },
-  "columnDisplayNames": { ... },
-  "devopsProjects": ["ProjectA", "ProjectB"]
+  "columnDisplayNames": { ... }
 }
 ```
-
-**Note:** `devopsProjects` array specifies which Azure DevOps projects to sync from. Empty array means fetch from all projects in the organization.
 
 ## API Endpoints
 
@@ -183,6 +189,8 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 - `DELETE /api/tasks/:id`
 - `GET /api/completed?startDate=X&endDate=Y` → sorted by completedAt
 - `GET /api/archived?startDate=X&endDate=Y` → sorted by archivedAt
+- `GET /api/devops/tasks` → fetch Tasks/Bugs from all ADO projects (excludes already-imported)
+- `POST /api/devops/import` → import a DevOps item into tasks.json with devopsTaskNum + devopsItemUrl
 
 ## Deployment Pipeline
 
@@ -203,17 +211,12 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 
 ## Future Enhancement Ideas
 
-1. **Azure DevOps Integration** (planned, not started)
-   - Fetch work items assigned to user from Azure DevOps
-   - One-way or two-way sync
-   - Requires: azure-devops-node-api, PAT auth, REST API integration
-
-2. **Recurring tasks** — templates that auto-recreate
-3. **Subtasks** — hierarchical task structure
-4. **Reports/Analytics** — velocity, completion trends
-5. **Mobile app** — React Native or PWA
-6. **Additional subdomains** — bggapp.sethsapps.com, etc.
-7. **Search improvements** — filters, sort options, saved searches
+1. **Recurring tasks** — templates that auto-recreate
+2. **Subtasks** — hierarchical task structure
+3. **Reports/Analytics** — velocity, completion trends
+4. **Mobile app** — React Native or PWA
+5. **Additional subdomains** — bggapp.sethsapps.com, etc.
+6. **Search improvements** — filters, sort options, saved searches
 
 ## Running the App
 
