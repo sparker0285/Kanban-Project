@@ -1124,6 +1124,51 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+.devops-staging-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.devops-staging-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.devops-staging-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.devops-last-fetched {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.btn-refresh-devops {
+  padding: 6px 14px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-refresh-devops:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-refresh-devops:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .devops-staging-view h2 {
   margin: 0 0 20px 0;
   font-size: 22px;
@@ -1378,8 +1423,15 @@ body {
 }
 
 .dark-mode .devops-staging-view h2,
-.app.dark-mode .devops-staging-view h2 {
+.app.dark-mode .devops-staging-view h2,
+.dark-mode .devops-staging-header h2,
+.app.dark-mode .devops-staging-header h2 {
   color: #ffffff;
+}
+
+.dark-mode .devops-last-fetched,
+.app.dark-mode .devops-last-fetched {
+  color: #9ca3af;
 }
 
 .dark-mode .devops-item,

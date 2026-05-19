@@ -105,7 +105,22 @@ export default function ArchivedView() {
             <div key={task.id} className="archived-task-item">
               <div className="task-header" onClick={() => setExpandedId(expandedId === task.id ? null : task.id)}>
                 <div className="task-header-content">
-                  <p className="task-title">{task.title}</p>
+                  {task.devopsItemUrl ? (
+                    <a
+                      href={task.devopsItemUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="task-title task-title-link"
+                      onClick={e => e.stopPropagation()}
+                      title="Open in Azure DevOps"
+                    >
+                      {task.devopsTaskNum ? `#${task.devopsTaskNum} - ` : ''}{task.title} ↗
+                    </a>
+                  ) : (
+                    <p className="task-title">
+                      {task.devopsTaskNum ? `#${task.devopsTaskNum} - ` : ''}{task.title}
+                    </p>
+                  )}
                   <p className="task-desc-preview">
                     {truncateText(task.description || '(no description)', 50)}
                   </p>

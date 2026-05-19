@@ -1,6 +1,35 @@
 import { useEffect, useState } from 'react';
 import { getDevopsTasks, importDevopsTask } from '../api';
 
+const CACHE_KEY = 'devopsStagingCache';
+
+function getTodayDateString() {
+  return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(items) {
+  const now = new Date();
+  localStorage.setItem(CACHE_KEY, JSON.stringify({
+    date: getTodayDateString(),
+    fetchedAt: now.toISOString(),
+    items,
+  }));
+}
+
+function formatTime(isoString) {
+  return new Date(isoString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 export default function DevOpsStagingView() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,9 +39,17 @@ export default function DevOpsStagingView() {
   const [expandedProjects, setExpandedProjects] = useState({});
   const [expandedIterations, setExpandedIterations] = useState({});
   const [importing, setImporting] = useState(null);
+  const [lastFetched, setLastFetched] = useState(null);
 
   useEffect(() => {
-    fetchItems();
+    const cache = loadCache();
+    if (cache && cache.date === getTodayDateString()) {
+      setItems(cache.items);
+      setLastFetched(cache.fetchedAt || null);
+      setLoading(false);
+    } else {
+      fetchItems();
+    }
   }, []);
 
   const fetchItems = async () => {
@@ -20,7 +57,10 @@ export default function DevOpsStagingView() {
     setError(null);
     try {
       const result = await getDevopsTasks();
+      const now = new Date().toISOString();
       setItems(result);
+      saveCache(result);
+      setLastFetched(now);
     } catch (err) {
       console.error('Failed to load DevOps items:', err);
       let errorMsg = 'Failed to load DevOps items';
@@ -85,7 +125,9 @@ export default function DevOpsStagingView() {
         column,
         devopsUrl: item.devopsUrl,
       });
-      setItems(items.filter(i => i.id !== item.id));
+      const updated = items.filter(i => i.id !== item.id);
+      setItems(updated);
+      saveCache(updated);
     } catch (err) {
       console.error('Failed to import task:', err);
     } finally {
@@ -143,7 +185,15 @@ export default function DevOpsStagingView() {
 
   return (
     <div className="devops-staging-view">
-      <h2>DevOps Staging</h2>
+      <div className="devops-staging-header">
+        <h2>DevOps Staging</h2>
+        <div className="devops-staging-toolbar">
+          {lastFetched && <span className="devops-last-fetched">Last refreshed at {formatTime(lastFetched)}</span>}
+          <button onClick={fetchItems} disabled={loading} className="btn-refresh-devops">
+            {loading ? 'Refreshing...' : 'Refresh from DevOps'}
+          </button>
+        </div>
+      </div>
 
       <div className="search-bar">
         <input
