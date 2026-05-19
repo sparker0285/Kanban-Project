@@ -125,6 +125,7 @@ export default function CompletedView() {
                     {truncateText(task.description || '(no description)', 50)}
                   </p>
                 </div>
+                <span className="task-completed-date-badge">{formatDate(task.completedAt)}</span>
                 <button className="expand-btn" title={expandedId === task.id ? 'Collapse' : 'Expand'}>
                   {expandedId === task.id ? '▼' : '▶'}
                 </button>
