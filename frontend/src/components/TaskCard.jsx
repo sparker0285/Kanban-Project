@@ -1,6 +1,6 @@
 import { Draggable } from '@hello-pangea/dnd';
 
-export default function TaskCard({ task, index, onDelete, onEdit, showCompletedDate }) {
+export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, showCompletedDate }) {
   const handleEdit = (e) => {
     e.stopPropagation();
     onEdit(task);
@@ -9,6 +9,10 @@ export default function TaskCard({ task, index, onDelete, onEdit, showCompletedD
   const handleDelete = (e) => {
     e.stopPropagation();
     onDelete(task.id);
+  };
+
+  const handleBodyClick = () => {
+    onViewDetail(task);
   };
 
   const displayTitle = task.devopsTaskNum
@@ -36,7 +40,7 @@ export default function TaskCard({ task, index, onDelete, onEdit, showCompletedD
           {...provided.draggableProps}
           {...provided.dragHandleProps}
         >
-          <div className="task-card-body">
+          <div className="task-card-body" onClick={handleBodyClick} style={{ cursor: 'pointer' }}>
             {task.devopsItemUrl ? (
               <a
                 href={task.devopsItemUrl}

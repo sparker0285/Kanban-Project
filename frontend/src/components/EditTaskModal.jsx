@@ -48,7 +48,7 @@ export default function EditTaskModal({ task, onSave, onClose, columns }) {
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Optional details"
-              rows={2}
+              rows={6}
             />
           </label>
           <label>

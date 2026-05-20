@@ -3,6 +3,7 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import Column from './Column';
 import AddTaskModal from './AddTaskModal';
 import EditTaskModal from './EditTaskModal';
+import TaskDetailModal from './TaskDetailModal';
 import { getTasks, createTask, updateTask, deleteTask } from '../api';
 
 export default function Board({ settings }) {
@@ -11,6 +12,7 @@ export default function Board({ settings }) {
   const [error, setError] = useState('');
   const [modalColumn, setModalColumn] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [detailTask, setDetailTask] = useState(null);
 
   const COMPLETED_COLUMN = 'Completed';
   const ARCHIVE_COLUMN = 'Archive';
@@ -154,6 +156,7 @@ export default function Board({ settings }) {
               onAddClick={setModalColumn}
               onDelete={handleDeleteTask}
               onEdit={setEditingTask}
+              onViewDetail={setDetailTask}
               color={getColumnColor(column)}
               showCompletedDate={column === COMPLETED_COLUMN || column === ARCHIVE_COLUMN}
             />
@@ -175,6 +178,14 @@ export default function Board({ settings }) {
           onSave={handleEditTask}
           onClose={() => setEditingTask(null)}
           columns={columns}
+        />
+      )}
+
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          onEdit={setEditingTask}
+          onClose={() => setDetailTask(null)}
         />
       )}
     </div>
