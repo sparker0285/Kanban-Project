@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-19  
-**Project Status:** v1.3 — Live on Azure with DevOps Staging integration
+**Last Updated:** 2026-05-20  
+**Project Status:** v1.4 — Live on Azure with DevOps Staging persistence, task detail modal, and board-aware staging
 
 ## Project Overview
 
@@ -43,7 +43,8 @@ frontend/
 │   │   ├── Column.jsx
 │   │   ├── TaskCard.jsx (shows DevOps link if devopsItemUrl present)
 │   │   ├── AddTaskModal.jsx (Project/Customer field)
-│   │   ├── EditTaskModal.jsx (Project/Customer field)
+│   │   ├── EditTaskModal.jsx (Project/Customer field, 6-row description textarea)
+│   │   ├── TaskDetailModal.jsx (read-only full-description popup, opens on card body click)
 │   │   ├── CompletedView.jsx
 │   │   ├── ArchivedView.jsx
 │   │   ├── DevOpsStagingView.jsx (DevOps items grouped by project then iteration, expand/collapse)
@@ -78,22 +79,28 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Task fields: Title, Description, Project/Customer, DevOps Task #
 - Completed & Archive columns: 7-day filter + date badge
 - Archive column protected from deletion
+- Click card body to open full Task Detail modal (description, metadata, Edit button)
 
 ✅ **Task Management**
 - All fields editable in Add & Edit modals
 - Column selection in Edit modal
 - Timestamps: createdAt, completedAt, archivedAt
+- Edit modal description textarea is 6 rows tall
+- Task Detail modal: wide (700px), scrollable, pre-wrap description, opens on card body click
 
 ✅ **Completed Tab**
 - Permanent history (all completed tasks)
 - Date range filters (Last 7 days, Last 30 days, All)
 - Expandable task details
 - Real-time search
+- Completion date shown inline on each task row
+- DevOps task # prefix and clickable DevOps link shown in task title (matches Board behavior)
 
 ✅ **Archived Tab**
 - Permanent history (all archived tasks)
 - Same filtering/search as Completed tab
 - Archive column protected from deletion
+- DevOps task # prefix and clickable DevOps link shown in task title (matches Board behavior)
 
 ✅ **Settings Tab**
 - Dark/Light mode toggle
@@ -101,17 +108,20 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Column management: add, remove (with task migration), rename, reorder, color
 - Completed and Archive columns cannot be deleted
 
-✅ **DevOps Staging Tab** (v1.3)
-- One-way import from Azure DevOps (Tasks & Bugs only, excluding Closed/Removed)
-- Fetches all items assigned to sparker@quicklaunchanalytics.com across all org projects
+✅ **DevOps Staging Tab** (v1.4)
+- Fetches all Tasks & Bugs assigned to sparker@quicklaunchanalytics.com (excluding Closed/Removed)
 - Grouped by Project → Iteration with collapsible headers (click to expand/collapse)
-- Expand All / Collapse All buttons collapse both projects and iterations
+- Expand All / Collapse All buttons
 - Shows state badge, type badge, iteration name, assigned to
 - Title is a direct link to the work item in Azure DevOps (opens in new tab)
-- Add items to Backlog or Priority with one click
-- Imported items removed from staging immediately; never reappear (tracked via devopsTaskNum)
+- **Board-aware:** items already imported show grayed out (55% opacity) with a green column badge (e.g. "Backlog", "Priority"); import buttons replaced with "On board in <Column>" message
+- Items drop off staging when Closed/Removed in DevOps (not when imported to board)
 - Deduplicates work items that appear across multiple projects
 - Imported tasks show "Open in DevOps ↗" link on Board TaskCard
+- **Persistence:** results cached in localStorage; auto-refreshes once per day (first load after midnight)
+- "Refresh from DevOps" button for manual refresh at any time
+- "Last refreshed at hh:mm:ss" timestamp displayed in tab header
+- Count line shows "N of N items · N on board" when imported items are visible
 - Error handling: shows user-friendly message if Key Vault fails or PAT is expired
 - PAT stored in Key Vault as `devops-token-qla`; org URL stored as `devops-url`
 
