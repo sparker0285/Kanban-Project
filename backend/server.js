@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS = {
   columnDisplayNames: {
     Completed: 'Completed',
   },
+  staleTaskDays: 7,
 };
 
 async function initDevopsSecrets(credential) {
@@ -268,7 +269,7 @@ app.get('/api/archived', async (req, res) => {
 // POST /api/tasks
 app.post('/api/tasks', async (req, res) => {
   try {
-    const { title, description, column, customer, devopsTaskNum } = req.body;
+    const { title, description, column, customer, devopsTaskNum, dueDate } = req.body;
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
     }
@@ -288,6 +289,7 @@ app.post('/api/tasks', async (req, res) => {
       devopsTaskNum: devopsTaskNum || null,
       column: column || 'Backlog',
       order: maxOrder + 1,
+      dueDate: dueDate || null,
       createdAt: new Date().toISOString(),
       completedAt: column === completedCol ? new Date().toISOString() : null,
       archivedAt: column === 'Archive' ? new Date().toISOString() : null,
@@ -301,6 +303,27 @@ app.post('/api/tasks', async (req, res) => {
   }
 });
 
+// PUT /api/tasks/reorder — must be declared BEFORE /:id to avoid Express matching "reorder" as an id
+app.put('/api/tasks/reorder', async (req, res) => {
+  try {
+    const { reorders } = req.body; // [{ column, taskIds: ['id1','id2',...] }]
+    if (!Array.isArray(reorders)) return res.status(400).json({ error: 'reorders must be an array' });
+
+    const tasks = await readTasks();
+    reorders.forEach(({ taskIds }) => {
+      taskIds.forEach((id, idx) => {
+        const task = tasks.find(t => t.id === id);
+        if (task) task.order = idx;
+      });
+    });
+    await writeTasks(tasks);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reorder tasks' });
+  }
+});
+
 // PUT /api/tasks/:id
 app.put('/api/tasks/:id', async (req, res) => {
   try {
@@ -311,7 +334,9 @@ app.put('/api/tasks/:id', async (req, res) => {
     const settings = await readSettings();
     const completedCol = settings.columnDisplayNames?.Completed || 'Completed';
     const existing = tasks[idx];
-    const updated = { ...existing, ...req.body };
+    // Strip reorders from the task fields before merging
+    const { reorders: inlineReorders, ...taskFields } = req.body;
+    const updated = { ...existing, ...taskFields };
 
     if (updated.column === completedCol && existing.column !== completedCol) {
       updated.completedAt = new Date().toISOString();
@@ -327,6 +352,17 @@ app.put('/api/tasks/:id', async (req, res) => {
     }
 
     tasks[idx] = updated;
+
+    // Apply inline reorders if provided (batches column-change + reorder into one write)
+    if (Array.isArray(inlineReorders)) {
+      inlineReorders.forEach(({ taskIds }) => {
+        taskIds.forEach((id, i) => {
+          const t = tasks.find(t => t.id === id);
+          if (t) t.order = i;
+        });
+      });
+    }
+
     await writeTasks(tasks);
 
     // Mirror to completed/archived history
@@ -360,27 +396,6 @@ app.delete('/api/tasks/:id', async (req, res) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete task' });
-  }
-});
-
-// PUT /api/tasks/reorder
-app.put('/api/tasks/reorder', async (req, res) => {
-  try {
-    const { reorders } = req.body; // [{ column, taskIds: ['id1','id2',...] }]
-    if (!Array.isArray(reorders)) return res.status(400).json({ error: 'reorders must be an array' });
-
-    const tasks = await readTasks();
-    reorders.forEach(({ taskIds }) => {
-      taskIds.forEach((id, idx) => {
-        const task = tasks.find(t => t.id === id);
-        if (task) task.order = idx;
-      });
-    });
-    await writeTasks(tasks);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to reorder tasks' });
   }
 });
 
@@ -509,6 +524,7 @@ app.post('/api/devops/import', async (req, res) => {
       devopsItemUrl: req.body.devopsUrl || '',
       column: importCol,
       order: importMaxOrder + 1,
+      dueDate: null,
       createdAt: new Date().toISOString(),
       completedAt: column === completedCol ? new Date().toISOString() : null,
       archivedAt: column === 'Archive' ? new Date().toISOString() : null,

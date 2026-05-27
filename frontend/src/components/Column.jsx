@@ -1,7 +1,7 @@
 import { Droppable } from '@hello-pangea/dnd';
 import TaskCard from './TaskCard';
 
-export default function Column({ column, displayName, tasks, onAddClick, onDelete, onEdit, onViewDetail, color, showCompletedDate, showCreatedDate }) {
+export default function Column({ column, displayName, tasks, onAddClick, onDelete, onEdit, onViewDetail, color, showCompletedDate, showCreatedDate, staleTaskDays }) {
   return (
     <div className="column">
       <div className="column-header" style={{ borderTopColor: color }}>
@@ -26,6 +26,7 @@ export default function Column({ column, displayName, tasks, onAddClick, onDelet
                 onViewDetail={onViewDetail}
                 showCompletedDate={showCompletedDate}
                 showCreatedDate={showCreatedDate}
+                staleTaskDays={staleTaskDays}
               />
             ))}
             {provided.placeholder}

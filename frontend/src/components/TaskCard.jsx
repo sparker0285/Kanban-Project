@@ -1,6 +1,6 @@
 import { Draggable } from '@hello-pangea/dnd';
 
-export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, showCompletedDate, showCreatedDate }) {
+export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, showCompletedDate, showCreatedDate, staleTaskDays }) {
   const handleEdit = (e) => {
     e.stopPropagation();
     onEdit(task);
@@ -29,6 +29,24 @@ export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, 
     if (task.completedAt) return formatDate(task.completedAt);
     if (task.archivedAt) return formatDate(task.archivedAt);
     return '';
+  };
+
+  const getAgeDays = () => {
+    if (!task.createdAt) return 0;
+    return Math.floor((Date.now() - new Date(task.createdAt)) / (1000 * 60 * 60 * 24));
+  };
+  const isStale = staleTaskDays != null && getAgeDays() >= staleTaskDays;
+
+  const getDueDateBadge = () => {
+    if (!task.dueDate) return null;
+    const due = new Date(task.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const diffDays = Math.ceil((dueDay - today) / (1000 * 60 * 60 * 24));
+    const label = diffDays < 0 ? 'Overdue' : `Due ${formatDate(task.dueDate)}`;
+    const cls = diffDays < 0 ? 'due-red' : diffDays <= 2 ? 'due-yellow' : 'due-green';
+    return { label, cls };
   };
 
   return (
@@ -61,6 +79,8 @@ export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, 
             {showCreatedDate && task.createdAt && (
               <p className="task-created-date">Added {formatDate(task.createdAt)}</p>
             )}
+            {isStale && <p className="task-stale-badge">{getAgeDays()}d old</p>}
+            {(() => { const d = getDueDateBadge(); return d ? <p className={`task-due-date ${d.cls}`}>{d.label}</p> : null; })()}
           </div>
           <div className="task-card-actions">
             <button

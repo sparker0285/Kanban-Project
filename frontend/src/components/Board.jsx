@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import Column from './Column';
 import AddTaskModal from './AddTaskModal';
@@ -13,6 +13,9 @@ export default function Board({ settings }) {
   const [modalColumn, setModalColumn] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [detailTask, setDetailTask] = useState(null);
+  const [undoSnapshot, setUndoSnapshot] = useState(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const undoTimerRef = useRef(null);
 
   const COMPLETED_COLUMN = 'Completed';
   const ARCHIVE_COLUMN = 'Archive';
@@ -49,6 +52,9 @@ export default function Board({ settings }) {
     // Nothing to do if dropped in same position in a date-ordered column
     if (sameColumn && DATE_ORDERED_COLUMNS.includes(destination.droppableId)) return;
 
+    // Capture snapshot for undo before any changes
+    const snapshot = tasks.map(t => ({ ...t }));
+
     try {
       const updates = {};
       const reorders = [];
@@ -80,8 +86,12 @@ export default function Board({ settings }) {
         reorders.push({ column: source.droppableId, taskIds: srcTasks.map(t => t.id) });
       }
 
-      if (!sameColumn) await updateTask(draggableId, updates);
-      if (reorders.length > 0) await reorderTasks(reorders);
+      if (!sameColumn) {
+        // Batch column change + reorders into a single request
+        await updateTask(draggableId, reorders.length > 0 ? { ...updates, reorders } : updates);
+      } else if (reorders.length > 0) {
+        await reorderTasks(reorders);
+      }
 
       // Update local state
       let newTasks = tasks.map(t => t.id === draggableId ? { ...t, ...updates } : t);
@@ -91,9 +101,66 @@ export default function Board({ settings }) {
         });
       });
       setTasks(newTasks);
+
+      // Show undo toast
+      setUndoSnapshot(snapshot);
+      setShowUndoToast(true);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setUndoSnapshot(null);
+      }, 5000);
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task');
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!undoSnapshot) return;
+    clearTimeout(undoTimerRef.current);
+    setShowUndoToast(false);
+
+    const currentTasks = tasks;
+    setTasks(undoSnapshot);
+    setUndoSnapshot(null);
+
+    try {
+      // Find the task that changed
+      const changedTask = undoSnapshot.find(snapTask => {
+        const cur = currentTasks.find(t => t.id === snapTask.id);
+        return cur && (cur.column !== snapTask.column || cur.order !== snapTask.order);
+      });
+      if (!changedTask) return;
+
+      const curTask = currentTasks.find(t => t.id === changedTask.id);
+      const reorders = [];
+
+      if (!DATE_ORDERED_COLUMNS.includes(changedTask.column)) {
+        const snapColTasks = undoSnapshot
+          .filter(t => t.column === changedTask.column)
+          .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        reorders.push({ column: changedTask.column, taskIds: snapColTasks.map(t => t.id) });
+      }
+      if (curTask.column !== changedTask.column && !DATE_ORDERED_COLUMNS.includes(curTask.column)) {
+        const snapSrcTasks = undoSnapshot
+          .filter(t => t.column === curTask.column)
+          .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        reorders.push({ column: curTask.column, taskIds: snapSrcTasks.map(t => t.id) });
+      }
+
+      if (curTask.column !== changedTask.column) {
+        await updateTask(changedTask.id, {
+          column: changedTask.column,
+          completedAt: changedTask.completedAt,
+          archivedAt: changedTask.archivedAt,
+          ...(reorders.length > 0 && { reorders }),
+        });
+      } else if (reorders.length > 0) {
+        await reorderTasks(reorders);
+      }
+    } catch (err) {
+      console.error('Failed to undo drag:', err);
     }
   };
 
@@ -179,6 +246,7 @@ export default function Board({ settings }) {
               color={getColumnColor(column)}
               showCompletedDate={column === COMPLETED_COLUMN || column === ARCHIVE_COLUMN}
               showCreatedDate={column === 'Backlog'}
+              staleTaskDays={DATE_ORDERED_COLUMNS.includes(column) ? null : (settings?.staleTaskDays ?? 7)}
             />
           ))}
         </div>
@@ -207,6 +275,13 @@ export default function Board({ settings }) {
           onEdit={setEditingTask}
           onClose={() => setDetailTask(null)}
         />
+      )}
+
+      {showUndoToast && (
+        <div className="undo-toast">
+          Task moved.
+          <button className="undo-toast-btn" onClick={handleUndo}>Undo</button>
+        </div>
       )}
     </div>
   );

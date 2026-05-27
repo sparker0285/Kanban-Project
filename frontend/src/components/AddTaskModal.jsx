@@ -5,6 +5,7 @@ export default function AddTaskModal({ column, onAdd, onClose }) {
   const [description, setDescription] = useState('');
   const [customer, setCustomer] = useState('');
   const [devopsTaskNum, setDevopsTaskNum] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -18,6 +19,7 @@ export default function AddTaskModal({ column, onAdd, onClose }) {
       description: description.trim(),
       customer: customer.trim(),
       devopsTaskNum: devopsTaskNum ? parseInt(devopsTaskNum) : null,
+      dueDate: dueDate || null,
       column,
     });
   };
@@ -61,6 +63,14 @@ export default function AddTaskModal({ column, onAdd, onClose }) {
               value={devopsTaskNum}
               onChange={e => setDevopsTaskNum(e.target.value)}
               placeholder="Task number (optional)"
+            />
+          </label>
+          <label>
+            Due Date
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
             />
           </label>
           <div className="modal-actions">

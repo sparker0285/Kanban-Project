@@ -283,6 +283,31 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
             Update
           </button>
         </div>
+        <div className="setting-item">
+          <label>
+            Stale task threshold (days):
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={settings.staleTaskDays ?? 7}
+              onChange={async (e) => {
+                const val = parseInt(e.target.value);
+                if (!val || val < 1) return;
+                const newSettings = { ...settings, staleTaskDays: val };
+                try {
+                  await updateSettings(newSettings);
+                  setSettings(newSettings);
+                  onSettingsUpdate(newSettings);
+                } catch {
+                  setError('Failed to update stale task threshold');
+                }
+              }}
+              style={{ width: '70px' }}
+            />
+          </label>
+          <span className="info-text" style={{ marginLeft: 8 }}>Tasks older than this show an age badge</span>
+        </div>
       </div>
 
       <div className="settings-section">

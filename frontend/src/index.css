@@ -720,6 +720,66 @@ body {
   text-align: right;
 }
 
+.task-stale-badge {
+  display: inline-block;
+  margin: 4px 0 0 0;
+  font-size: 10px;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-style: italic;
+}
+
+.task-due-date {
+  display: inline-block;
+  margin: 5px 0 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.task-due-date.due-green { background: #dcfce7; color: #166534; }
+.task-due-date.due-yellow { background: #fef9c3; color: #854d0e; }
+.task-due-date.due-red { background: #fee2e2; color: #991b1b; }
+
+/* Undo Toast */
+.undo-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1a1a1a;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: toast-in 0.2s ease;
+}
+
+.undo-toast-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.undo-toast-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Settings View */
 .settings-view {
   background: white;
@@ -1051,6 +1111,16 @@ body {
 .app.dark-mode .task-created-date {
   color: var(--text-secondary);
 }
+
+.dark-mode .task-stale-badge,
+.app.dark-mode .task-stale-badge { background: #451a03; color: #fcd34d; }
+
+.dark-mode .task-due-date.due-green,
+.app.dark-mode .task-due-date.due-green { background: #14532d; color: #86efac; }
+.dark-mode .task-due-date.due-yellow,
+.app.dark-mode .task-due-date.due-yellow { background: #422006; color: #fde047; }
+.dark-mode .task-due-date.due-red,
+.app.dark-mode .task-due-date.due-red { background: #450a0a; color: #fca5a5; }
 
 .dark-mode .task-completed-date-badge,
 .app.dark-mode .task-completed-date-badge {

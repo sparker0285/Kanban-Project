@@ -41,6 +41,7 @@ export default function TaskDetailModal({ task, onEdit, onClose }) {
 
         <div className="modal-detail-meta">
           <span>Column: <strong>{task.column}</strong></span>
+          {task.dueDate && <span>Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
           {task.createdAt && <span>Created: {formatDate(task.createdAt)}</span>}
           {task.completedAt && <span>Completed: {formatDate(task.completedAt)}</span>}
           {task.archivedAt && <span>Archived: {formatDate(task.archivedAt)}</span>}

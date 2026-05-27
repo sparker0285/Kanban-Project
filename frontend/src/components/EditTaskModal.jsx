@@ -5,6 +5,7 @@ export default function EditTaskModal({ task, onSave, onClose, columns }) {
   const [description, setDescription] = useState(task.description);
   const [customer, setCustomer] = useState(task.customer || '');
   const [devopsTaskNum, setDevopsTaskNum] = useState(task.devopsTaskNum || '');
+  const [dueDate, setDueDate] = useState(task.dueDate || '');
   const [column, setColumn] = useState(task.column);
   const [error, setError] = useState('');
 
@@ -19,6 +20,7 @@ export default function EditTaskModal({ task, onSave, onClose, columns }) {
       description: description.trim(),
       customer: customer.trim(),
       devopsTaskNum: devopsTaskNum ? parseInt(devopsTaskNum) : null,
+      dueDate: dueDate || null,
       column,
     });
   };
@@ -66,6 +68,14 @@ export default function EditTaskModal({ task, onSave, onClose, columns }) {
               value={devopsTaskNum}
               onChange={e => setDevopsTaskNum(e.target.value)}
               placeholder="Task number (optional)"
+            />
+          </label>
+          <label>
+            Due Date
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
             />
           </label>
           <label>

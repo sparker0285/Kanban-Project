@@ -49,6 +49,27 @@ export default function CompletedView() {
     return new Date(isoString).toLocaleString();
   };
 
+  const exportCsv = () => {
+    const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const headers = ['Title', 'Customer', 'DevOps #', 'Created', 'Completed', 'Description'];
+    const rows = filteredTasks.map(t => [
+      t.title,
+      t.customer || '',
+      t.devopsTaskNum || '',
+      t.createdAt ? new Date(t.createdAt).toLocaleString() : '',
+      t.completedAt ? new Date(t.completedAt).toLocaleString() : '',
+      t.description || '',
+    ]);
+    const csv = [headers.map(escape), ...rows.map(r => r.map(escape))].map(r => r.join(',')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `completed-tasks-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const truncateText = (text, length) => {
     if (!text) return '';
     return text.length > length ? text.substring(0, length) + '...' : text;
@@ -72,6 +93,14 @@ export default function CompletedView() {
           onClick={() => setFilter('all')}
         >
           All
+        </button>
+        <button
+          className="export-csv-btn"
+          onClick={exportCsv}
+          title="Export visible tasks to CSV"
+          style={{ marginLeft: 'auto' }}
+        >
+          ⬇ Export CSV
         </button>
         <button
           className={filter === 'last7' ? 'active' : ''}
