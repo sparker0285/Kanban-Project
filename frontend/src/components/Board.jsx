@@ -4,7 +4,7 @@ import Column from './Column';
 import AddTaskModal from './AddTaskModal';
 import EditTaskModal from './EditTaskModal';
 import TaskDetailModal from './TaskDetailModal';
-import { getTasks, createTask, updateTask, deleteTask } from '../api';
+import { getTasks, createTask, updateTask, deleteTask, reorderTasks } from '../api';
 
 export default function Board({ settings }) {
   const [tasks, setTasks] = useState([]);
@@ -16,7 +16,8 @@ export default function Board({ settings }) {
 
   const COMPLETED_COLUMN = 'Completed';
   const ARCHIVE_COLUMN = 'Archive';
-  const DAYS_TO_SHOW = 7;
+  const DATE_ORDERED_COLUMNS = [COMPLETED_COLUMN, ARCHIVE_COLUMN];
+  const BOARD_MAX_ITEMS = 5;
 
   useEffect(() => {
     fetchTasks();
@@ -37,30 +38,59 @@ export default function Board({ settings }) {
   };
 
   const handleDragEnd = async (result) => {
-    const { draggableId, destination } = result;
+    const { draggableId, source, destination } = result;
     if (!destination) return;
 
     const task = tasks.find(t => t.id === draggableId);
-    if (!task || task.column === destination.droppableId) return;
+    if (!task) return;
+
+    const sameColumn = task.column === destination.droppableId;
+
+    // Nothing to do if dropped in same position in a date-ordered column
+    if (sameColumn && DATE_ORDERED_COLUMNS.includes(destination.droppableId)) return;
 
     try {
-      const updates = { column: destination.droppableId };
+      const updates = {};
+      const reorders = [];
 
-      // Set completedAt/archivedAt on frontend for immediate UI update
-      const completedCol = settings?.columnDisplayNames?.Completed || 'Completed';
-      if (destination.droppableId === completedCol && !task.completedAt) {
-        updates.completedAt = new Date().toISOString();
-      }
-      if (destination.droppableId === 'Archive' && !task.archivedAt) {
-        updates.archivedAt = new Date().toISOString();
+      if (!sameColumn) {
+        updates.column = destination.droppableId;
+        // Set timestamps on frontend for immediate UI update
+        const completedCol = settings?.columnDisplayNames?.Completed || 'Completed';
+        if (destination.droppableId === completedCol && !task.completedAt) {
+          updates.completedAt = new Date().toISOString();
+        }
+        if (destination.droppableId === 'Archive' && !task.archivedAt) {
+          updates.archivedAt = new Date().toISOString();
+        }
       }
 
-      await updateTask(draggableId, updates);
-      setTasks(
-        tasks.map(t =>
-          t.id === draggableId ? { ...t, ...updates } : t
-        )
-      );
+      // Build reorder payloads for user-ordered columns
+      if (!DATE_ORDERED_COLUMNS.includes(destination.droppableId)) {
+        const destTasks = tasks
+          .filter(t => t.column === destination.droppableId && t.id !== draggableId)
+          .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        destTasks.splice(destination.index, 0, { id: draggableId });
+        reorders.push({ column: destination.droppableId, taskIds: destTasks.map(t => t.id) });
+      }
+      if (!sameColumn && !DATE_ORDERED_COLUMNS.includes(source.droppableId)) {
+        const srcTasks = tasks
+          .filter(t => t.column === source.droppableId && t.id !== draggableId)
+          .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+        reorders.push({ column: source.droppableId, taskIds: srcTasks.map(t => t.id) });
+      }
+
+      if (!sameColumn) await updateTask(draggableId, updates);
+      if (reorders.length > 0) await reorderTasks(reorders);
+
+      // Update local state
+      let newTasks = tasks.map(t => t.id === draggableId ? { ...t, ...updates } : t);
+      reorders.forEach(({ taskIds }) => {
+        taskIds.forEach((id, idx) => {
+          newTasks = newTasks.map(t => t.id === id ? { ...t, order: idx } : t);
+        });
+      });
+      setTasks(newTasks);
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task');
@@ -102,33 +132,22 @@ export default function Board({ settings }) {
     }
   };
 
-  const isWithinLastDays = (timestamp, days) => {
-    if (!timestamp) return false;
-    const taskDate = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now - taskDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= days;
-  };
-
   const getTasksByColumn = (column) => {
     let columnTasks = tasks.filter(t => t.column === column);
 
-    // Filter Completed and Archive columns to show only last 7 days
     if (column === COMPLETED_COLUMN) {
-      columnTasks = columnTasks.filter(t => isWithinLastDays(t.completedAt, DAYS_TO_SHOW));
-    } else if (column === ARCHIVE_COLUMN) {
-      columnTasks = columnTasks.filter(t => isWithinLastDays(t.archivedAt, DAYS_TO_SHOW));
+      return columnTasks
+        .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+        .slice(0, BOARD_MAX_ITEMS);
+    }
+    if (column === ARCHIVE_COLUMN) {
+      return columnTasks
+        .sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt))
+        .slice(0, BOARD_MAX_ITEMS);
     }
 
-    // Sort Completed and Archive by timestamp (newest first)
-    if (column === COMPLETED_COLUMN) {
-      columnTasks.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
-    } else if (column === ARCHIVE_COLUMN) {
-      columnTasks.sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
-    }
-
-    return columnTasks;
+    // User-ordered columns: sort by order field (null → end)
+    return columnTasks.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
   };
 
   const getColumnColor = (column) => {
@@ -159,6 +178,7 @@ export default function Board({ settings }) {
               onViewDetail={setDetailTask}
               color={getColumnColor(column)}
               showCompletedDate={column === COMPLETED_COLUMN || column === ARCHIVE_COLUMN}
+              showCreatedDate={column === 'Backlog'}
             />
           ))}
         </div>

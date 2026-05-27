@@ -1,6 +1,6 @@
 import { Draggable } from '@hello-pangea/dnd';
 
-export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, showCompletedDate }) {
+export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, showCompletedDate, showCreatedDate }) {
   const handleEdit = (e) => {
     e.stopPropagation();
     onEdit(task);
@@ -58,6 +58,9 @@ export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, 
             {task.customer && <p className="task-customer">{task.customer}</p>}
             {task.description && <p className="task-desc">{task.description}</p>}
             {showCompletedDate && <p className="task-completed-date">{getCompletedDateDisplay()}</p>}
+            {showCreatedDate && task.createdAt && (
+              <p className="task-created-date">Added {formatDate(task.createdAt)}</p>
+            )}
           </div>
           <div className="task-card-actions">
             <button

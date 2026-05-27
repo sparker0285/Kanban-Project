@@ -24,6 +24,9 @@ let devopsPat;
 let devopsSecretsLoaded = false;
 let devopsSecretsError = null;
 
+// In-memory blob cache — write-through, invalidated on cold start
+const blobCache = {};
+
 const DEFAULT_SETTINGS = {
   boardName: 'Kanban Task Board',
   darkMode: true,
@@ -87,9 +90,12 @@ async function initStorage() {
 }
 
 async function readBlob(blobName, defaultValue) {
+  if (blobCache[blobName] !== undefined) return blobCache[blobName];
   try {
     const buf = await containerClient.getBlockBlobClient(blobName).downloadToBuffer();
-    return JSON.parse(buf.toString());
+    const data = JSON.parse(buf.toString());
+    blobCache[blobName] = data;
+    return data;
   } catch {
     return defaultValue;
   }
@@ -101,6 +107,7 @@ async function writeBlob(blobName, data) {
     blobHTTPHeaders: { blobContentType: 'application/json' },
     overwrite: true,
   });
+  blobCache[blobName] = data;
 }
 
 async function readSettings() {
@@ -269,6 +276,10 @@ app.post('/api/tasks', async (req, res) => {
     const settings = await readSettings();
     const completedCol = settings.columnDisplayNames?.Completed || 'Completed';
 
+    const tasks = await readTasks();
+    const colTasks = tasks.filter(t => t.column === (column || 'Backlog'));
+    const maxOrder = colTasks.reduce((max, t) => (t.order != null ? Math.max(max, t.order) : max), -1);
+
     const task = {
       id: uuidv4(),
       title: title.trim(),
@@ -276,12 +287,12 @@ app.post('/api/tasks', async (req, res) => {
       customer: customer ? customer.trim() : '',
       devopsTaskNum: devopsTaskNum || null,
       column: column || 'Backlog',
+      order: maxOrder + 1,
       createdAt: new Date().toISOString(),
       completedAt: column === completedCol ? new Date().toISOString() : null,
       archivedAt: column === 'Archive' ? new Date().toISOString() : null,
     };
 
-    const tasks = await readTasks();
     tasks.push(task);
     await writeTasks(tasks);
     res.status(201).json(task);
@@ -349,6 +360,27 @@ app.delete('/api/tasks/:id', async (req, res) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// PUT /api/tasks/reorder
+app.put('/api/tasks/reorder', async (req, res) => {
+  try {
+    const { reorders } = req.body; // [{ column, taskIds: ['id1','id2',...] }]
+    if (!Array.isArray(reorders)) return res.status(400).json({ error: 'reorders must be an array' });
+
+    const tasks = await readTasks();
+    reorders.forEach(({ taskIds }) => {
+      taskIds.forEach((id, idx) => {
+        const task = tasks.find(t => t.id === id);
+        if (task) task.order = idx;
+      });
+    });
+    await writeTasks(tasks);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reorder tasks' });
   }
 });
 
@@ -463,6 +495,11 @@ app.post('/api/devops/import', async (req, res) => {
     const settings = await readSettings();
     const completedCol = settings.columnDisplayNames?.Completed || 'Completed';
 
+    const tasks = await readTasks();
+    const importCol = column || 'Backlog';
+    const importColTasks = tasks.filter(t => t.column === importCol);
+    const importMaxOrder = importColTasks.reduce((max, t) => (t.order != null ? Math.max(max, t.order) : max), -1);
+
     const task = {
       id: uuidv4(),
       title: title.trim(),
@@ -470,13 +507,13 @@ app.post('/api/devops/import', async (req, res) => {
       customer: '',
       devopsTaskNum: parseInt(devopsId, 10),
       devopsItemUrl: req.body.devopsUrl || '',
-      column: column || 'Backlog',
+      column: importCol,
+      order: importMaxOrder + 1,
       createdAt: new Date().toISOString(),
       completedAt: column === completedCol ? new Date().toISOString() : null,
       archivedAt: column === 'Archive' ? new Date().toISOString() : null,
     };
 
-    const tasks = await readTasks();
     tasks.push(task);
     await writeTasks(tasks);
     res.status(201).json(task);

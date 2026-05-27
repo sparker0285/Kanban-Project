@@ -22,6 +22,14 @@ export default function CompletedView() {
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         startDate = sevenDaysAgo.toISOString().split('T')[0];
+      } else if (filter === 'last-week') {
+        const dow = today.getDay(); // 0=Sun
+        const lastSat = new Date(today);
+        lastSat.setDate(today.getDate() - dow - 1);
+        const lastSun = new Date(lastSat);
+        lastSun.setDate(lastSat.getDate() - 6);
+        startDate = lastSun.toISOString().split('T')[0];
+        endDate = lastSat.toISOString().split('T')[0];
       } else if (filter === 'last30') {
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -70,6 +78,12 @@ export default function CompletedView() {
           onClick={() => setFilter('last7')}
         >
           Last 7 days
+        </button>
+        <button
+          className={filter === 'last-week' ? 'active' : ''}
+          onClick={() => setFilter('last-week')}
+        >
+          Last week
         </button>
         <button
           className={filter === 'last30' ? 'active' : ''}

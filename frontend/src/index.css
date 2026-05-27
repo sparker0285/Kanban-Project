@@ -712,6 +712,14 @@ body {
   flex-shrink: 0;
 }
 
+.task-created-date {
+  margin: 4px 0 0 0;
+  font-size: 10px;
+  color: #aaa;
+  font-style: italic;
+  text-align: right;
+}
+
 /* Settings View */
 .settings-view {
   background: white;
@@ -1036,6 +1044,11 @@ body {
 
 .dark-mode .task-completed-date,
 .app.dark-mode .task-completed-date {
+  color: var(--text-secondary);
+}
+
+.dark-mode .task-created-date,
+.app.dark-mode .task-created-date {
   color: var(--text-secondary);
 }
 

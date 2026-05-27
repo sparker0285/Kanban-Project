@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-20  
-**Project Status:** v1.4 — Live on Azure with DevOps Staging persistence, task detail modal, and board-aware staging
+**Last Updated:** 2026-05-27  
+**Project Status:** v1.5 — Persistent drag order, Last week filter, board column limits, created-date badge, blob caching
 
 ## Project Overview
 
@@ -59,7 +59,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 .github/workflows/azure-deploy.yml (GitHub Actions CI/CD)
 ```
 
-## Features (v1.3 - Current)
+## Features (v1.5 - Current)
 
 ✅ **Live on Azure**
 - Deployed to Azure App Service (B1, Central US)
@@ -75,9 +75,11 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 ✅ **Board Tab**
 - Dynamic columns (configurable in Settings)
 - Drag-and-drop between columns (immediate UI update with completedAt/archivedAt)
+- **Persistent drag order** for all non-date columns (Priority, Backlog, custom columns); order stored as `order` field, persisted via `PUT /api/tasks/reorder`
 - Add/Edit/Delete tasks
 - Task fields: Title, Description, Project/Customer, DevOps Task #
-- Completed & Archive columns: 7-day filter + date badge
+- Completed & Archive columns: show last 5 completed/archived tasks (no date filter on board)
+- Backlog cards show "Added MMM D" created-date badge in small print at bottom-right
 - Archive column protected from deletion
 - Click card body to open full Task Detail modal (description, metadata, Edit button)
 
@@ -90,7 +92,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 
 ✅ **Completed Tab**
 - Permanent history (all completed tasks)
-- Date range filters (Last 7 days, Last 30 days, All)
+- Date range filters (All, Last 7 days, **Last week** [Sun–Sat prior calendar week], Last 30 days)
 - Expandable task details
 - Real-time search
 - Completion date shown inline on each task row
@@ -152,7 +154,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 
 **Kudu URL:** `https://seth-kanban-app-a9a7a8gzahc0dzbt.scm.centralus-01.azurewebsites.net/`
 
-## Data Model (v1.3)
+## Data Model (v1.5)
 
 ### tasks.json (Active Tasks)
 ```json
@@ -166,6 +168,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
       "devopsTaskNum": null,
       "devopsItemUrl": null,
       "column": "Priority",
+      "order": 0,
       "createdAt": "2026-05-19T...",
       "completedAt": null,
       "archivedAt": null
@@ -194,8 +197,9 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 
 - `GET/PUT /api/settings`
 - `GET /api/tasks` → `[{task}]`
-- `POST /api/tasks` → create (auto-sets createdAt, completedAt if Completed)
-- `PUT /api/tasks/:id` → update (auto-manages timestamps on column change)
+- `POST /api/tasks` → create (auto-sets createdAt, completedAt if Completed; assigns `order` = max+1 in column)
+- `PUT /api/tasks/:id` → update (auto-manages timestamps on column change; accepts optional `reorders` array for batched column reorder)
+- `PUT /api/tasks/reorder` → body: `{ reorders: [{column, taskIds}] }` — sets `order` field on tasks in bulk
 - `DELETE /api/tasks/:id`
 - `GET /api/completed?startDate=X&endDate=Y` → sorted by completedAt
 - `GET /api/archived?startDate=X&endDate=Y` → sorted by archivedAt
@@ -218,6 +222,7 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 - Drag-drop now sets completedAt/archivedAt on frontend for instant UI (no tab-switching needed)
 - JSON file I/O is synchronous on backend (acceptable for small data)
 - No multi-user conflict resolution (solo use)
+- Existing tasks created before v1.5 have `order: null`; frontend treats null as sort-to-end, so they appear after any explicitly ordered tasks until first drag
 
 ## Future Enhancement Ideas
 

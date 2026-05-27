@@ -28,6 +28,8 @@ export const getSettings = () => axios.get(`${BASE}/settings`).then(r => r.data)
 
 export const updateSettings = (settings) => axios.put(`${BASE}/settings`, settings).then(r => r.data);
 
+export const reorderTasks = (reorders) => axios.put(`${BASE}/tasks/reorder`, { reorders }).then(r => r.data);
+
 export const getDevopsTasks = () => axios.get(`${BASE}/devops/tasks`).then(r => r.data);
 
 export const importDevopsTask = (payload) => axios.post(`${BASE}/devops/import`, payload).then(r => r.data);
