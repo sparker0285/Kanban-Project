@@ -227,6 +227,35 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 4. **Mobile app** — React Native or PWA
 5. **Additional subdomains** — bggapp.sethsapps.com, etc.
 6. **Search improvements** — filters, sort options, saved searches
+7. **Team multi-user expansion** — see `plan_for_team_app.md` for full spec (pending leadership approval)
+
+## Planned: Team Multi-User Expansion
+
+> Full implementation plan in `plan_for_team_app.md`. Not yet approved for development.
+
+### Decisions Made
+
+**Authentication:** Azure Entra ID (MSAL) — SSO with existing Microsoft org accounts. No separate passwords or user management.
+
+**Data Model:** Per-user blob namespacing (`<userId>/tasks.json`, etc.) + shared namespace (`shared/tasks.json`, `shared/config.json`). No database needed for 5–7 users.
+
+**Task Ownership:** A task exists in exactly one place at all times.
+- **Team Backlog** (`shared/tasks.json`) — unowned tasks available to the whole team
+- **Personal Board** (`<userId>/tasks.json`) — tasks you are actively working on
+- Claiming a team task moves it atomically from shared → personal
+- Handing back moves it atomically from personal → shared
+
+**Roles:**
+- **Admin** — can edit/delete any task; manages team member list. Defined in `shared/config.json`.
+- **Normal user** — can edit/delete only their own personal tasks; can add to and claim from team backlog.
+
+**New UI Tabs:**
+- **Team Backlog** — shared pool; add tasks, claim them, hand back personal tasks
+- **Team View** — read-only aggregation of all members' Priority + Backlog tasks, color-coded by person
+
+**DevOps Staging:** Personal view by default; toggle to team view showing all members' assigned DevOps items.
+
+**Scaling Note (30+ users):** Blob-per-user JSON works well for 5–7 people. At ~30 users, recommend migrating data access to **Azure Cosmos DB (serverless tier)** to handle concurrent write safety and efficient team view queries. Backend data access should be wrapped in a service layer (`storage.js`) from the start so the swap is contained to that layer — no endpoint or frontend changes needed at migration time.
 
 ## Running the App
 
