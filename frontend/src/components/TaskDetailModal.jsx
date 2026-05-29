@@ -1,4 +1,4 @@
-export default function TaskDetailModal({ task, onEdit, onClose }) {
+export default function TaskDetailModal({ task, onEdit, onClose, onMove }) {
   const formatDate = (isoString) => {
     if (!isoString) return null;
     return new Date(isoString).toLocaleString();
@@ -49,6 +49,12 @@ export default function TaskDetailModal({ task, onEdit, onClose }) {
 
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onClose}>Close</button>
+          {task.column !== 'Completed' && (
+            <button className="btn-complete" onClick={() => onMove(task.id, 'Completed')}>Mark Complete</button>
+          )}
+          {task.column !== 'Archive' && (
+            <button className="btn-archive" onClick={() => onMove(task.id, 'Archive')}>Archive</button>
+          )}
           <button className="btn-primary" onClick={() => { onClose(); onEdit(task); }}>Edit</button>
         </div>
       </div>

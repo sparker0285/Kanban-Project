@@ -188,6 +188,22 @@ export default function Board({ settings }) {
     }
   };
 
+  const handleMoveTask = async (id, column) => {
+    try {
+      const task = tasks.find(t => t.id === id);
+      const updates = { column };
+      const completedCol = settings?.columnDisplayNames?.Completed || 'Completed';
+      if (column === completedCol && !task.completedAt) updates.completedAt = new Date().toISOString();
+      if (column === 'Archive' && !task.archivedAt) updates.archivedAt = new Date().toISOString();
+      await updateTask(id, updates);
+      setTasks(tasks.map(t => t.id === id ? { ...t, ...updates } : t));
+      setDetailTask(null);
+    } catch (err) {
+      console.error('Failed to move task:', err);
+      setError('Failed to move task');
+    }
+  };
+
   const handleDeleteTask = async (id) => {
     if (!confirm('Delete this task?')) return;
     try {
@@ -274,6 +290,7 @@ export default function Board({ settings }) {
           task={detailTask}
           onEdit={setEditingTask}
           onClose={() => setDetailTask(null)}
+          onMove={handleMoveTask}
         />
       )}
 
