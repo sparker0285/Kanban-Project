@@ -6,7 +6,7 @@ export default function Column({ column, displayName, tasks, onAddClick, onDelet
     <div className="column">
       <div className="column-header" style={{ borderTopColor: color }}>
         <h2>{displayName}</h2>
-        <span className="task-count">{tasks.length}</span>
+        <span className="task-count">{showCompletedDate ? 'Top 5' : tasks.length}</span>
       </div>
 
       <Droppable droppableId={column}>

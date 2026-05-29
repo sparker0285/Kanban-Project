@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-27  
-**Project Status:** v1.5 — Persistent drag order, Last week filter, board column limits, created-date badge, blob caching
+**Last Updated:** 2026-05-29  
+**Project Status:** v1.6 — Due dates, CSV export, stale indicator, undo toast, batch reorder; drag-drop route fix
 
 ## Project Overview
 
@@ -59,7 +59,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 .github/workflows/azure-deploy.yml (GitHub Actions CI/CD)
 ```
 
-## Features (v1.5 - Current)
+## Features (v1.6 - Current)
 
 ✅ **Live on Azure**
 - Deployed to Azure App Service (B1, Central US)
@@ -78,7 +78,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - **Persistent drag order** for all non-date columns (Priority, Backlog, custom columns); order stored as `order` field, persisted via `PUT /api/tasks/reorder`
 - Add/Edit/Delete tasks
 - Task fields: Title, Description, Project/Customer, DevOps Task #
-- Completed & Archive columns: show last 5 completed/archived tasks (no date filter on board)
+- Completed & Archive columns: show last 5 completed/archived tasks; column header shows "Top 5" badge
 - Backlog cards show "Added MMM D" created-date badge in small print at bottom-right
 - Archive column protected from deletion
 - Click card body to open full Task Detail modal (description, metadata, Edit button)
@@ -87,8 +87,10 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - All fields editable in Add & Edit modals
 - Column selection in Edit modal
 - Timestamps: createdAt, completedAt, archivedAt
+- Optional **due date** field: color-coded badge on card (green > 2 days, yellow ≤ 2 days, red = overdue); shown in Task Detail modal
 - Edit modal description textarea is 6 rows tall
 - Task Detail modal: wide (700px), scrollable, pre-wrap description, opens on card body click
+- **Undo last drag-drop:** 5-second toast after each drag with Undo button; reverts column and order on server
 
 ✅ **Completed Tab**
 - Permanent history (all completed tasks)
@@ -97,6 +99,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Real-time search
 - Completion date shown inline on each task row
 - DevOps task # prefix and clickable DevOps link shown in task title (matches Board behavior)
+- **Export CSV** button downloads currently filtered + searched tasks (UTF-8 with BOM for Excel)
 
 ✅ **Archived Tab**
 - Permanent history (all archived tasks)
@@ -107,6 +110,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 ✅ **Settings Tab**
 - Dark/Light mode toggle
 - Board name customization (reflected in browser tab title)
+- **Stale task threshold** (days): tasks older than this show an amber age badge on user-ordered columns (default: 7 days)
 - Column management: add, remove (with task migration), rename, reorder, color
 - Completed and Archive columns cannot be deleted
 
@@ -154,7 +158,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 
 **Kudu URL:** `https://seth-kanban-app-a9a7a8gzahc0dzbt.scm.centralus-01.azurewebsites.net/`
 
-## Data Model (v1.5)
+## Data Model (v1.6)
 
 ### tasks.json (Active Tasks)
 ```json
@@ -169,6 +173,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
       "devopsItemUrl": null,
       "column": "Priority",
       "order": 0,
+      "dueDate": null,
       "createdAt": "2026-05-19T...",
       "completedAt": null,
       "archivedAt": null
@@ -187,6 +192,7 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 {
   "boardName": "Seth's Task Board",
   "darkMode": true,
+  "staleTaskDays": 7,
   "columns": ["Priority", "Backlog", "Archive", "Completed"],
   "columnColors": { ... },
   "columnDisplayNames": { ... }
