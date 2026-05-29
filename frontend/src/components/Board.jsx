@@ -262,7 +262,13 @@ export default function Board({ settings }) {
               color={getColumnColor(column)}
               showCompletedDate={column === COMPLETED_COLUMN || column === ARCHIVE_COLUMN}
               showCreatedDate={column === 'Backlog'}
-              staleTaskDays={DATE_ORDERED_COLUMNS.includes(column) ? null : (settings?.staleTaskDays ?? 7)}
+              staleTaskDays={(() => {
+                if (DATE_ORDERED_COLUMNS.includes(column)) return null;
+                const s = settings?.staleTaskDays;
+                if (!s) return 14;
+                if (typeof s === 'number') return s; // backward compat
+                return s[column] ?? 14;
+              })()}
             />
           ))}
         </div>

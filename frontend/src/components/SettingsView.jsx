@@ -283,30 +283,40 @@ export default function SettingsView({ onDarkModeChange, onSettingsUpdate }) {
             Update
           </button>
         </div>
-        <div className="setting-item">
-          <label>
-            Stale task threshold (days):
-            <input
-              type="number"
-              min="1"
-              max="365"
-              value={settings.staleTaskDays ?? 7}
-              onChange={async (e) => {
-                const val = parseInt(e.target.value);
-                if (!val || val < 1) return;
-                const newSettings = { ...settings, staleTaskDays: val };
-                try {
-                  await updateSettings(newSettings);
-                  setSettings(newSettings);
-                  onSettingsUpdate(newSettings);
-                } catch {
-                  setError('Failed to update stale task threshold');
-                }
-              }}
-              style={{ width: '70px' }}
-            />
-          </label>
-          <span className="info-text" style={{ marginLeft: 8 }}>Tasks older than this show an age badge</span>
+        <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+          <span style={{ fontWeight: 500 }}>Stale task thresholds <span className="info-text">(days until age badge appears)</span></span>
+          {settings.columns
+            .filter(col => col !== 'Archive' && col !== (settings.columnDisplayNames?.Completed || 'Completed'))
+            .map(col => {
+              const s = settings.staleTaskDays;
+              const val = !s ? 14 : typeof s === 'number' ? s : (s[col] ?? 14);
+              return (
+                <label key={col} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ minWidth: 100 }}>{settings.columnDisplayNames?.[col] || col}:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={val}
+                    onChange={async (e) => {
+                      const days = parseInt(e.target.value);
+                      if (!days || days < 1) return;
+                      const current = !s || typeof s === 'number' ? {} : { ...s };
+                      const newSettings = { ...settings, staleTaskDays: { ...current, [col]: days } };
+                      try {
+                        await updateSettings(newSettings);
+                        setSettings(newSettings);
+                        onSettingsUpdate(newSettings);
+                      } catch {
+                        setError('Failed to update stale task threshold');
+                      }
+                    }}
+                    style={{ width: '70px' }}
+                  />
+                  <span className="info-text">days</span>
+                </label>
+              );
+            })}
         </div>
       </div>
 

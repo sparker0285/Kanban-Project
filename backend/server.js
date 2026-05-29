@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS = {
   columnDisplayNames: {
     Completed: 'Completed',
   },
-  staleTaskDays: 7,
+  staleTaskDays: { Priority: 7, Backlog: 30 },
 };
 
 async function initDevopsSecrets(credential) {
