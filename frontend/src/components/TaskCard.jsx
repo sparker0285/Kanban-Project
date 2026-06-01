@@ -44,8 +44,17 @@ export default function TaskCard({ task, index, onDelete, onEdit, onViewDetail, 
     today.setHours(0, 0, 0, 0);
     const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
     const diffDays = Math.ceil((dueDay - today) / (1000 * 60 * 60 * 24));
-    const label = diffDays < 0 ? 'Overdue' : `Due ${formatDate(task.dueDate)}`;
-    const cls = diffDays < 0 ? 'due-red' : diffDays <= 2 ? 'due-yellow' : 'due-green';
+    let label, cls;
+    if (diffDays === 0) {
+      label = 'Due Today';
+      cls = 'due-yellow';
+    } else if (diffDays < 0) {
+      label = 'Overdue';
+      cls = 'due-red';
+    } else {
+      label = `Due ${formatDate(task.dueDate)}`;
+      cls = diffDays <= 2 ? 'due-yellow' : 'due-green';
+    }
     return { label, cls };
   };
 
