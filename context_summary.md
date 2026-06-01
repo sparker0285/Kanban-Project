@@ -1,7 +1,7 @@
 # Kanban Task Board - Project Context Summary
 
-**Last Updated:** 2026-05-29  
-**Project Status:** v1.6 — Due dates, CSV export, stale indicator, undo toast, batch reorder; drag-drop route fix
+**Last Updated:** 2026-06-01  
+**Project Status:** v1.7 — Per-column stale thresholds, task detail modal move buttons
 
 ## Project Overview
 
@@ -59,7 +59,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 .github/workflows/azure-deploy.yml (GitHub Actions CI/CD)
 ```
 
-## Features (v1.6 - Current)
+## Features (v1.7 - Current)
 
 ✅ **Live on Azure**
 - Deployed to Azure App Service (B1, Central US)
@@ -90,6 +90,7 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 - Optional **due date** field: color-coded badge on card (green > 2 days, yellow ≤ 2 days, red = overdue); shown in Task Detail modal
 - Edit modal description textarea is 6 rows tall
 - Task Detail modal: wide (700px), scrollable, pre-wrap description, opens on card body click
+  - **Mark Complete** (green) and **Archive** (amber) buttons for quick moves; buttons hide if already in that column
 - **Undo last drag-drop:** 5-second toast after each drag with Undo button; reverts column and order on server
 
 ✅ **Completed Tab**
@@ -110,7 +111,11 @@ deploy.ps1 (build frontend + zip-deploy to App Service)
 ✅ **Settings Tab**
 - Dark/Light mode toggle
 - Board name customization (reflected in browser tab title)
-- **Stale task threshold** (days): tasks older than this show an amber age badge on user-ordered columns (default: 7 days)
+- **Per-column stale task thresholds**: each non-date column has its own age-badge threshold
+  - Priority: 7 days (default)
+  - Backlog: 30 days (default)
+  - Custom columns: 14 days (default)
+  - All independently adjustable
 - Column management: add, remove (with task migration), rename, reorder, color
 - Completed and Archive columns cannot be deleted
 
@@ -192,7 +197,7 @@ Arrays of historical tasks with timestamps populated (same schema as tasks.json)
 {
   "boardName": "Seth's Task Board",
   "darkMode": true,
-  "staleTaskDays": 7,
+  "staleTaskDays": { "Priority": 7, "Backlog": 30 },
   "columns": ["Priority", "Backlog", "Archive", "Completed"],
   "columnColors": { ... },
   "columnDisplayNames": { ... }
